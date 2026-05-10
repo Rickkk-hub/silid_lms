@@ -6,7 +6,7 @@ export default function StudentOverview() {
     <main className="min-h-screen mx-auto p-4 md:p-10 pt-4 bg-[#F1F5F0]">
       {/* 1. Hero Header */}
       <section className="mb-8 md:mb-10">
-        <h1 className="text-2xl md:text-4xl font-serif font-semibold mb-1 text-[#2D362F]">Good morning!,</h1>
+        <h1 className="text-2xl md:text-4xl font-serif font-semibold mb-1 text-[#2D362F]">Good morning Student!,</h1>
         <p className="text-gray-500 text-[11px] md:text-sm font-medium tracking-tight leading-relaxed">
           BS Computer Science · 3rd Year · 1st Semester · A.Y. 2025–2026
         </p>

@@ -1,11 +1,92 @@
 @import "tailwindcss";
 
-html {
-  /* This helps the browser know where to stop even without JS */
-  scroll-padding-top: 80px; 
+/* --- Base Styles --- */
+@layer base {
+  html {
+    scroll-padding-top: 80px; 
+  }
+  html.lenis {
+    scroll-behavior: auto !important;
+  }
 }
 
-/* Remove default scroll-behavior if Lenis is active to avoid 'jitter' */
-html.lenis {
-  scroll-behavior: auto !important;
+/* --- teacherRecord Print Optimization --- */
+@media print {
+  /* 1. Page Setup */
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  /* 2. UI Cleanup */
+  nav, aside, button, select, header, .no-print, .sidebar, [role="navigation"] {
+    display: none !important;
+  }
+
+  body, html, #root, main {
+    background: white !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  [class*="bg-[#F1F5F0]"], .min-h-screen {
+    background-color: white !important;
+  }
+
+  /* 3. Table Structure - FIXED WIDTHS */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important; /* Force columns to stay in their lane */
+  }
+
+  /* 4. The Magic Ratios (Total = 100%) */
+  th:nth-child(1), td:nth-child(1) { width: 30% !important; } /* Student Name */
+  th:nth-child(2), td:nth-child(2) { width: 12% !important; } /* Prelim */
+  th:nth-child(3), td:nth-child(3) { width: 12% !important; } /* Midterm */
+  th:nth-child(4), td:nth-child(4) { width: 12% !important; } /* Finals */
+  th:nth-child(5), td:nth-child(5) { width: 18% !important; } /* Standing */
+  th:nth-child(6), td:nth-child(6) { width: 16% !important; } /* Status/STA */
+
+  th, td {
+    padding: 10px 4px !important;
+    font-size: 9pt !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    text-align: left !important;
+    overflow: visible !important;
+  }
+
+  /* 5. Standing Badge Fix (No more overlap) */
+  [class*="bg-emerald-50"], 
+  [class*="text-emerald-600"],
+  .standing-container {
+    display: block !important; /* Changed from inline-flex to block */
+    width: 80px !important;    /* Fixed width so it doesn't push others */
+    margin: 0 auto !important; /* Center it */
+    position: static !important;
+    background-color: #ecfdf5 !important;
+    color: #059669 !important;
+    border: 1px solid #10b981 !important;
+    border-radius: 4px !important;
+    padding: 4px 0 !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+  }
+
+  /* 6. Fix for the 'STA' text being cut off */
+  th:last-child, td:last-child {
+    text-align: center !important;
+  }
+
+  /* 7. Color Force */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
 }

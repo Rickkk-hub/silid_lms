@@ -11,7 +11,7 @@ export default function Footer() {
             <div className="bg-[#3a947e] p-2 rounded-lg text-white">
               <GraduationCap size={18} />
             </div>
-            <span className="font-bold text-[#2D362F]">Verdant</span>
+            <span className="font-bold text-[#2D362F]">SILID</span>
           </div>
           <p>
             A calm and modern student portal designed to simplify academic life.

@@ -79,10 +79,10 @@ export default function StudentSidebar({ open, setOpen }) {
           {/* NAV */}
           <nav className="space-y-2">
             <NavItem icon={<LayoutDashboard size={18} />} label="Dashboard" to="/StudentDashboard" onClick={() => setOpen(false)} />
-            <NavItem icon={<BookOpen size={18} />} label="Enrollment" to="/enrollment" onClick={() => setOpen(false)} />
-            <NavItem icon={<GraduationCap size={18} />} label="Grades" to="/grades" onClick={() => setOpen(false)} />
-            <NavItem icon={<Users size={18} />} label="Attendance" to="/attendance" onClick={() => setOpen(false)} />
-            <NavItem icon={<Library size={18} />} label="Learning Hub" to="/LearningHub" onClick={() => setOpen(false)} />
+            <NavItem icon={<BookOpen size={18} />} label="Enrollment" to="/S-Enrollment" onClick={() => setOpen(false)} />
+            <NavItem icon={<GraduationCap size={18} />} label="Grades" to="/S-Grades" onClick={() => setOpen(false)} />
+            <NavItem icon={<Users size={18} />} label="Attendance" to="/S-Attendance" onClick={() => setOpen(false)} />
+            <NavItem icon={<Library size={18} />} label="Learning Hub" to="/S-LearningHub" onClick={() => setOpen(false)} />
           </nav>
 
         </div>
