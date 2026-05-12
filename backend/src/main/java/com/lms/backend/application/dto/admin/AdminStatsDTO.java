@@ -1,4 +1,4 @@
-package com.lms.backend.application.dto; // Adjust package as needed
+package com.lms.backend.application.dto.admin; // Adjust package as needed
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

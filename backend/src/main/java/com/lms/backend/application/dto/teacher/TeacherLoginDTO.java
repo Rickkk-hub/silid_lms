@@ -1,4 +1,4 @@
-package com.lms.backend.application.dto;
+package com.lms.backend.application.dto.teacher;
 
 import lombok.Data;
 
@@ -8,5 +8,5 @@ public class TeacherLoginDTO {
     private String fullname;
     private String email;
     private String password;
-    private String role = "Teacher";
+    private String role;
 }

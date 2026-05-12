@@ -25,6 +25,8 @@ import AdminC from "../Pages/Admin/Admin-Course";
 import AdminA from "../Pages/Admin/Admin-Assign";
 import AdminSAccount from "../Pages/Admin/Admin-StudentAccount";
 import AdminTAccount from "../Pages/Admin/Admin-TeacherAccount";
+import AdminE from "../Pages/Admin/Admin-Enrollment";
+import AdminM from "../Pages/Admin/Admin-Module";
 
 
 export default function App() {
@@ -62,6 +64,8 @@ export default function App() {
         <Route path="/A-Assign" element={<AdminA/>} />
         <Route path="/A-StudentAccount" element={<AdminSAccount/>} />
         <Route path="/A-TeacherAccount" element={<AdminTAccount/>} />
+        <Route path="/A-Enrollment" element={<AdminE/>} />
+        <Route path="/A-Module" element={<AdminM/>} />
 
         <Route path="*" element={<Navigate to="/Login" replace />} />
       </Routes>

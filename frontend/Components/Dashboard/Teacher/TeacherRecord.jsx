@@ -23,26 +23,40 @@ export default function TeacherRecord() {
     } catch { return {}; }
   }, []);
 
-  // 1. DATA SOURCE OF TRUTH: Find the current room details from the sections list
-  const activeSection = useMemo(() => {
-    return sections.find((s) => String(s.id) === String(selectedSection));
-  }, [sections, selectedSection]);
-
-  const fetchClassRecord = useCallback(async (sectionId) => {
-    if (!sectionId) return;
+  // Updated fetch logic to match our Grade/Enrollment bridge
+  const fetchClassRecord = useCallback(async (sectionName) => {
+    if (!sectionName || !user.id) return;
     try {
       setTableLoading(true);
-      const res = await axios.get(
-        `http://localhost:8080/api/grades/section/${sectionId}/summary`
-      );
-      setStudents(res.data || []);
+      
+      // 1. Fetch Enrollments to get the full class list
+      const enrollRes = await axios.get(`http://localhost:8080/api/enrollments/teacher/${user.id}`);
+      const enrolledInThisSection = enrollRes.data.filter(en => en.section === sectionName);
+
+      // 2. Fetch Grades for existing scores
+      const gradesRes = await axios.get(`http://localhost:8080/api/grades/teacher/${user.id}/section/${sectionName}`);
+
+      // 3. Merge to ensure clean UI records
+      const recordData = enrolledInThisSection.map(enrollment => {
+        const grade = gradesRes.data.find(g => g.student.id === enrollment.student.id);
+        return {
+          studentName: enrollment.student.fullname,
+          prelim: grade ? grade.prelims : 0,
+          midterm: grade ? grade.midterms : 0,
+          finals: grade ? grade.finals : 0,
+          standing: grade ? grade.average : 0,
+          status: grade ? grade.remarks : "Ongoing"
+        };
+      });
+
+      setStudents(recordData);
     } catch (err) {
       console.error("Fetch Error:", err);
       setStudents([]);
     } finally {
       setTableLoading(false);
     }
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -52,14 +66,20 @@ export default function TeacherRecord() {
         return;
       }
       try {
-        const res = await axios.get(`http://localhost:8080/api/sections/teacher/${user.id}`);
+        // Fetch enrollments to extract the unique section strings
+        const res = await axios.get(`http://localhost:8080/api/enrollments/teacher/${user.id}`);
         if (isMounted) {
-          const sectionData = res.data || [];
-          setSections(sectionData);
-          if (sectionData.length > 0) {
-            const firstId = sectionData[0].id;
-            setSelectedSection(firstId);
-            await fetchClassRecord(firstId);
+          const enrollments = res.data || [];
+          const uniqueSections = [...new Set(enrollments.map(e => e.section))].map(sec => ({
+            id: sec,
+            name: sec
+          }));
+
+          setSections(uniqueSections);
+          if (uniqueSections.length > 0) {
+            const firstSec = uniqueSections[0].id;
+            setSelectedSection(firstSec);
+            await fetchClassRecord(firstSec);
           }
         }
       } catch (err) {
@@ -74,9 +94,9 @@ export default function TeacherRecord() {
   }, [user.id, fetchClassRecord]);
 
   const handleSectionChange = (e) => {
-    const id = e.target.value;
-    setSelectedSection(id);
-    fetchClassRecord(id);
+    const sectionName = e.target.value;
+    setSelectedSection(sectionName);
+    fetchClassRecord(sectionName);
   };
 
   const getStandingColor = (standing) => {
@@ -112,7 +132,7 @@ export default function TeacherRecord() {
               >
                 {sections.map((sec) => (
                   <option key={sec.id} value={sec.id}>
-                    {sec.courseCode || sec.course?.code} — {sec.room}
+                    Section: {sec.name}
                   </option>
                 ))}
               </select>
@@ -154,54 +174,44 @@ export default function TeacherRecord() {
                   <td colSpan="6" className="py-32 text-center opacity-30">
                     <AlertCircle size={40} className="mx-auto mb-3" />
                     <p className="text-xs font-black uppercase tracking-widest italic text-slate-500">
-                      No matching records for {activeSection?.room || "this section"}
+                      No matching records for {selectedSection || "this section"}
                     </p>
                   </td>
                 </tr>
               ) : (
                 students.map((student, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50 transition-all duration-300 group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4 text-left">
-                        <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 shadow-sm">
-                            <User size={18} />
+                    <td className="px-8 py-5 text-sm font-bold text-slate-700">
+                      <div className="flex items-center gap-4">
+                        <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-300">
+                          <User size={18} />
                         </div>
-                        <div>
-                            <p className="font-bold text-slate-700 text-sm leading-tight">{student.studentName}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">
-                                    {activeSection?.courseCode}
-                                </p>
-                                <p className="text-[9px] text-[#3a947e] font-black uppercase flex items-center gap-1 italic">
-                                    <MapPin size={9} /> {activeSection?.room || "RM"}
-                                </p>
-                            </div>
-                        </div>
+                        {student.studentName}
                       </div>
                     </td>
                     
                     <td className="px-4 py-5 text-center text-xs font-bold text-slate-500">
-                      {typeof student.prelim === 'number' ? student.prelim.toFixed(2) : "0.00"}
+                      {student.prelim.toFixed(2)}
                     </td>
                     <td className="px-4 py-5 text-center text-xs font-bold text-slate-500">
-                      {typeof student.midterm === 'number' ? student.midterm.toFixed(2) : "0.00"}
+                      {student.midterm.toFixed(2)}
                     </td>
                     <td className="px-4 py-5 text-center text-xs font-bold text-slate-500">
-                      {typeof student.finals === 'number' ? student.finals.toFixed(2) : "0.00"}
+                      {student.finals.toFixed(2)}
                     </td>
                     
                     <td className="px-4 py-5 text-center">
                       <span className={`inline-block px-3 py-1 rounded-lg font-black text-[10px] border shadow-sm ${getStandingColor(student.standing)}`}>
-                        {typeof student.standing === 'number' ? student.standing.toFixed(2) : "0.00"}
+                        {student.standing.toFixed(2)}
                       </span>
                     </td>
                     
                     <td className="px-8 py-5 text-right">
                       <span className={`inline-block px-4 py-1.5 rounded-xl font-black text-[9px] uppercase tracking-widest ${
-                          student.status === "Passed" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : 
-                          student.status === "Failed" ? "bg-red-50 text-red-600 border border-red-100" : "bg-slate-50 text-slate-400 border border-slate-100"
+                          student.status === "PASSED" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : 
+                          student.status === "FAILED" ? "bg-red-50 text-red-600 border border-red-100" : "bg-slate-50 text-slate-400 border border-slate-100"
                       }`}>
-                        {student.status || "Ongoing"}
+                        {student.status}
                       </span>
                     </td>
                   </tr>
@@ -212,7 +222,6 @@ export default function TeacherRecord() {
         </div>
       </div>
       
-      {/* BRANDING FOOTER */}
       <div className="flex flex-col items-center gap-2 opacity-20 py-10">
         <div className="w-12 h-[1px] bg-emerald-950"></div>
         <p className="text-[8px] font-black uppercase tracking-[0.6em] text-emerald-950">

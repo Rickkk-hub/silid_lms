@@ -1,104 +1,105 @@
 package com.lms.backend.application.services;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.lms.backend.application.dto.admin.AdminDTO;
+import com.lms.backend.application.dto.admin.AdminLoginDTO;
+import com.lms.backend.application.dto.admin.AdminRegisterDTO;
+import com.lms.backend.application.dto.users.ResultDTO;
+import com.lms.backend.domain.entities.Admin;
+import com.lms.backend.domain.entities.User;
+import com.lms.backend.domain.repositories.IAdminRepository;
+import com.lms.backend.domain.repositories.IUserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import com.lms.backend.application.dto.AdminLoginDTO;
-import com.lms.backend.application.dto.AdminRegisterDTO;
-import com.lms.backend.application.dto.AdminStatsDTO;
-import com.lms.backend.application.dto.ResultDTO;
-import com.lms.backend.application.interfaces.IAdminService;
-import com.lms.backend.domain.entities.Admin;
-import com.lms.backend.domain.repositories.IAdminRepository;
-import com.lms.backend.domain.repositories.ICourseRepository;
-import com.lms.backend.domain.repositories.IUserRepository;
-
-import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class AdminService implements IAdminService {
-    
+public class AdminService {
+
     private final IAdminRepository adminRepository;
+    private final IUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public ResultDTO AdminRegister(AdminRegisterDTO register) {
+
+
+    @Transactional
+    public ResultDTO registerAdmin(AdminRegisterDTO dto) {
         ResultDTO result = new ResultDTO();
         try {
-            if(!register.getPassword().equals(register.getConfirmpassword())) {
-                throw new IllegalArgumentException("Passwords do not match!");
+            if (!dto.getPassword().equals(dto.getConfirmpassword())) {
+                throw new Exception("Passwords do not match!");
             }
 
-            if(adminRepository.findByEmail(register.getEmail()).isPresent()){
-                throw new IllegalArgumentException("Email is already registered!");
+            if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+                throw new Exception("Email is already registered.");
             }
+
+            User user = new User();
+            user.setEmail(dto.getEmail());
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+            user.setRole("ADMIN");
+            user.setActive(true);
+            User savedUser = userRepository.save(user);
 
             Admin admin = new Admin();
-            admin.setFullname(register.getFullname());
-            admin.setEmail(register.getEmail());
-            admin.setPassword(passwordEncoder.encode(register.getPassword()));
+            admin.setFullname(dto.getFullname());
+            admin.setEmail(dto.getEmail());
             admin.setRole("ADMIN");
+            admin.setUser(savedUser);
+            adminRepository.save(admin);
 
-            Admin saved = adminRepository.save(admin);
-            
             result.setSuccess(true);
-            result.setMessage("Admin successfully registered!");
-            result.setAdmin(saved);
-        } catch(Exception e) { 
+            result.setMessage("Admin registered successfully!");
+            result.setFullname(admin.getFullname());
+            result.populateFromUser(savedUser);
+
+        } catch (Exception e) {
             result.setSuccess(false);
             result.setMessage(e.getMessage());
         }
         return result;
     }
-    
-    @Override
-    public ResultDTO AdminLogin(AdminLoginDTO login) {
+
+    public ResultDTO loginAdmin(AdminLoginDTO dto) {
         ResultDTO result = new ResultDTO();
         try {
-    
-            Admin admin = adminRepository.findByEmail(login.getEmail())
-                .orElseThrow(() -> new Exception("Invalid Email"));
-      
-            // FIX: Check if password DOES NOT match
-            if(!passwordEncoder.matches(login.getPassword(), admin.getPassword())) {
-                throw new ExceptionInInitializerError("Invalid Password");
+            User user = userRepository.findByEmail(dto.getEmail())
+                    .orElseThrow(() -> new Exception("Invalid credentials"));
+
+            if (!"ADMIN".equals(user.getRole())) {
+                throw new Exception("Access Denied: Not an Administrator");
+            }
+
+            if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+                throw new Exception("Invalid credentials");
             }
 
             result.setSuccess(true);
-            result.setMessage("Login successful!");
-            result.setAdmin(admin);
-        } catch(Exception e) {
+            result.setMessage("Administrator Access Granted");
+            result.populateFromUser(user);
+            
+            // Fetch the name from the admin table to send back to frontend
+            adminRepository.findByUserUserid(user.getUserid())
+                .ifPresent(admin -> result.setFullname(admin.getFullname()));
+
+        } catch (Exception e) {
             result.setSuccess(false);
             result.setMessage(e.getMessage());
         }
         return result;
     }
 
+    public AdminDTO getAdminByUserId(long userId) {
+        Admin admin = adminRepository.findByUserUserid(userId)
+                .orElseThrow(() -> new RuntimeException("Admin profile not found"));
 
-    @Autowired
-    private ICourseRepository courseRepo;
-
-    @Autowired
-    private IUserRepository userRepo;
-
-    public AdminStatsDTO getOverviewStats() {
-        AdminStatsDTO stats = new AdminStatsDTO();
-        
-        // 1. Course Stats
-        stats.setTotalCourses(courseRepo.count());
-        stats.setUnassignedCount(courseRepo.countByTeacherIsNull());
-        stats.setDepartmentCount(courseRepo.countDistinctDepartments());
-        
-        // 2. User Stats
-        stats.setActiveFaculty(userRepo.countByRole("TEACHER"));
-        stats.setTotalStudents(userRepo.countByRole("STUDENT"));
-        
-        // 3. System Stats
-        stats.setActiveRoles(5); 
-
-        return stats;
+        AdminDTO dto = new AdminDTO();
+        dto.setId(admin.getId());
+        dto.setUserId(admin.getUser().getUserid());
+        dto.setFullname(admin.getFullname());
+        dto.setEmail(admin.getEmail());
+        dto.setRole(admin.getRole());
+        return dto;
     }
 }
-

@@ -82,6 +82,8 @@ export default function AdminSidebar({ open, setOpen }) {
             <NavItem icon={<GraduationCap size={18} />} label="Assign Teacher" to="/A-Assign" onClick={() => setOpen(false)} />
             <NavItem icon={<Users size={18} />} label="Teacher Account" to="/A-TeacherAccount" onClick={() => setOpen(false)} />
               <NavItem icon={<Users size={18} />} label="Student Account" to="/A-StudentAccount" onClick={() => setOpen(false)} />
+              <NavItem icon={<GraduationCap size={18} />} label="Enrollment" to="/A-Enrollment" onClick={() => setOpen(false)} />
+               <NavItem icon={<BookOpen size={18} />} label="Module" to="/A-Module" onClick={() => setOpen(false)} />
           </nav>
 
         </div>

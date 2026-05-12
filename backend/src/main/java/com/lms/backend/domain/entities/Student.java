@@ -1,26 +1,36 @@
 package com.lms.backend.domain.entities;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Data;
-import java.util.UUID;
+
 
 @Entity
-@Table(name = "students")
 @Data
+@Table(name = "students")
 public class Student {
+     
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private User user;
-
-    @Column(name = "student_number", unique = true)
-    private String studentNumber;
-
-    private String program; // e.g., "BSIT"
+    private String fullname;
+    private String email;
+    private String role;
+    private String course;
+    private String year_level;
+    private String gender;
+    private String birth_date;
+    private String address;
+    private String phone_number;
     
-    @Column(name = "year_level")
-    private int yearLevel;
+
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 }

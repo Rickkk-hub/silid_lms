@@ -1,33 +1,29 @@
 package com.lms.backend.domain.entities;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.util.UUID;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
-@Table(name = "admin")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Table(name = "admin")
 public class Admin {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
 
-    @Column(unique = true, nullable = false)
     private String fullname;
-
-    @Column(nullable = false)
-    @JsonIgnore // This prevents the password from being sent to the React frontend
-    private String password;
-
-    @Column(unique = true, nullable = false)
     private String email;
+    private String role;
 
-    @Column(nullable = false)
-    private String role = "ADMIN";
+    @OneToOne
+    @JoinColumn(name = "user_id")
+     private User user;
+
 }

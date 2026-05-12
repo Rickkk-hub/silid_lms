@@ -1,56 +1,47 @@
 package com.lms.backend.domain.entities;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
-@Table(
-    name = "attendances",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            columnNames = {"student_id", "section_id", "attendance_date"}
-        )
-    }
-)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "attendance", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"student_id", "course_id", "date"})
+})
+@Data
 public class Attendance {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "section_id", nullable = false)
-    private Section section;
-
-    // CHANGED: Linked directly to Student entity to match the UUID sent by React
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    @Column(name = "attendance_date", nullable = false)
-    private LocalDate attendanceDate;
+    @ManyToOne
+    @JoinColumn(name = "teacher_id", nullable = false)
+    private Teacher teacher;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
+
+    @Column(nullable = false)
+    private String section;
+
+    @Column(nullable = false)
+    private LocalDate date;
 
     @Column(nullable = false)
     private String status;
 
     private String remarks;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        if (this.attendanceDate == null) {
-            this.attendanceDate = LocalDate.now();
-        }
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

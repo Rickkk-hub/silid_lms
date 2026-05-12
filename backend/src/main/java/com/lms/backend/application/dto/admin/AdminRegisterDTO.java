@@ -1,4 +1,4 @@
-package com.lms.backend.application.dto;
+package com.lms.backend.application.dto.admin;
 import lombok.Data;
 
 @Data
@@ -7,5 +7,5 @@ public class AdminRegisterDTO {
     private String email; 
     private String password;
      private String confirmpassword;
-    private String role = "Admin";     
+    private String role;
 }

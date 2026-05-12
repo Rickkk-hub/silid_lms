@@ -2,26 +2,20 @@ package com.lms.backend.domain.repositories;
 
 import com.lms.backend.domain.entities.Attendance;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
-@Repository
-public interface IAttendanceRepository extends JpaRepository<Attendance, UUID> {
+public interface IAttendanceRepository extends JpaRepository<Attendance, Long> {
+    // Basic filters
+    List<Attendance> findBySectionAndDate(String section, LocalDate date);
+    List<Attendance> findByStudentId(Long studentId);
+    
+    // Aligns with the "Recent Logs" card (Top 5)
+    List<Attendance> findTop5ByTeacherIdOrderByDateDesc(Long teacherId);
+    
+    // Aligns with the "Audit Logs" table (History)
+    List<Attendance> findByTeacherIdOrderByDateDesc(Long teacherId);
 
-    List<Attendance> findByStudentIdOrderByAttendanceDateDesc(UUID studentId);
-
-    // FIX: Using underscores helps JPA navigate nested relationships clearly
-    List<Attendance> findBySection_Teacher_IdOrderByAttendanceDateDesc(UUID teacherId);
-
-    // FIX: Use AttendanceDate instead of CreatedAt if CreatedAt isn't defined in your entity
-    List<Attendance> findTop10BySection_Teacher_IdOrderByAttendanceDateDesc(UUID teacherId);
-
-    boolean existsByStudentIdAndSectionIdAndAttendanceDate(
-            UUID studentId,
-            UUID sectionId,
-            LocalDate date
-    );
+    Optional<Attendance> findByStudentIdAndCourseIdAndDate(Long studentId, Long courseId, LocalDate date);
 }

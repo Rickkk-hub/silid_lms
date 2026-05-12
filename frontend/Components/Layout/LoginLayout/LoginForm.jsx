@@ -16,7 +16,7 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      // Clear old session to prevent ID mixups
+      // Clear old session
       localStorage.removeItem("user");
       localStorage.removeItem("role");
 
@@ -25,61 +25,59 @@ export default function LoginForm() {
         { email, password }
       );
 
-     if (response.data?.success) {
+      // 1. Check if the backend returned a successful response
+      if (response.data?.success) {
         const data = response.data;
-        const finalRole = data.role.toUpperCase(); // Ensure it's uppercase
-        let storageData = {};
 
-        if (finalRole === "TEACHER" && data.teacher) {
-          storageData = {
-            ...data.teacher,
-            ...data.teacher.user,
-            id: data.teacher.id,
-            role: finalRole,
-          };
-        } else if (finalRole === "STUDENT" && data.student) {
-          storageData = {
-            ...data.student, 
-            ...data.student.user,
-            id: data.student.id,
-            role: finalRole,
-          };
-        } else {
-          // This catches ADMIN or any basic User without extra table links
-          storageData = {
-            id: data.id, // The UUID from your ResultDTO
-            fullname: data.fullname,
-            email: data.email,
-            role: finalRole,
-          };
-        }
+        // 2. SAFE ROLE PARSING: Use optional chaining and nullish coalescing
+        // This prevents the "toUpperCase of null" error
+        const finalRole = (data.role || "GUEST").toUpperCase();
 
-        // Save and Navigate
+        // 3. MAP DATA TO STORAGE: Aligning with 'userid' from ResultDTO
+        const storageData = {
+          id: data.userid, 
+          fullname: data.fullname || "User",
+          email: data.email,
+          role: finalRole,
+        };
+
+        // 4. SAVE TO LOCAL STORAGE
         localStorage.setItem("user", JSON.stringify(storageData));
         localStorage.setItem("role", finalRole);
 
         Swal.fire({
           icon: "success",
           title: "Welcome Back!",
-          text: `Logged in as ${finalRole}`,
+          text: `Logged in as ${storageData.fullname}`,
           timer: 1500,
           showConfirmButton: false,
           background: "#F1F5F0",
         });
 
+        // 5. REDIRECT BASED ON ROLE
         setTimeout(() => {
-          if (finalRole === "TEACHER") navigate("/TeacherDashboard");
+          if (finalRole === "ADMIN") navigate("/AdminDashboard");
+          else if (finalRole === "TEACHER") navigate("/TeacherDashboard");
           else if (finalRole === "STUDENT") navigate("/StudentDashboard");
-          else if (finalRole === "ADMIN") navigate("/AdminDashboard"); // REDIRECT TO ADMIN
-          else navigate("/"); // Fallback
+          else navigate("/");
         }, 1600);
+      } else {
+        // Handle cases where success is false but didn't throw an error
+        // eslint-disable-next-line no-undef
+        throw new Error(data.message || "Invalid credentials");
       }
     } catch (error) {
       console.error("Login Error:", error);
+
+      // Handle both 401 (Unauthorized) and 500 (Server Error)
+      const errorMessage =
+        error.response?.data?.message ||
+        "Connection failed. Please check if the backend is running.";
+
       Swal.fire({
         icon: "error",
         title: "Login Failed",
-        text: error.response?.data?.message || "Invalid credentials",
+        text: errorMessage,
         background: "#F1F5F0",
       });
     } finally {

@@ -1,18 +1,18 @@
 package com.lms.backend.application.dto;
 
 import lombok.Data;
-import java.util.UUID;
-import java.time.LocalDateTime;
 
 @Data
 public class EnrollmentDTO {
-    private UUID id;
-    private UUID studentId;
-    private UUID sectionId;
-    private String status; // ENROLLED, DROPPED, COMPLETED
-    private LocalDateTime enrolledAt;
+    private Long studentId;  // The ID from the students table
+    private Long teacherId;  // The ID from the teachers table
     
-    // Extra fields for the React UI (so you don't just see IDs)
-    private String studentName;
-    private String courseTitle;
+    // FIX: Add this field so the Service can call .getCourseId()
+    private Long courseId;   
+    
+    private String semester;
+    private String schoolYear;
+    private String section;
+    private String department;
+    private String status;
 }

@@ -1,83 +1,57 @@
 package com.lms.backend.application.services;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import com.lms.backend.application.dto.ResultDTO;
-import com.lms.backend.application.dto.TeacherLoginDTO;
-import com.lms.backend.application.dto.TeacherRegisterDTO;
-import com.lms.backend.application.interfaces.ITeacherService;
+import com.lms.backend.application.dto.teacher.TeacherRegisterDTO;
+import com.lms.backend.application.dto.users.ResultDTO;
 import com.lms.backend.domain.entities.Teacher;
 import com.lms.backend.domain.entities.User;
 import com.lms.backend.domain.repositories.ITeacherRepository;
 import com.lms.backend.domain.repositories.IUserRepository;
-
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class TeacherService implements ITeacherService {
-    
+public class TeacherService {
     private final ITeacherRepository teacherRepository;
-    private final IUserRepository userRepository; // We need this to link the User identity
+    private final IUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Override
-    @Transactional // Ensures both User and Teacher are saved, or neither is
-    public ResultDTO TeacherRegister(TeacherRegisterDTO register) {
+    @Transactional
+    public ResultDTO registerTeacher(TeacherRegisterDTO dto) {
         ResultDTO result = new ResultDTO();
         try {
-            if(!register.getPassword().equals(register.getConfirmpassword())) {
-                throw new IllegalArgumentException("Passwords do not match!");
+            // Validation
+            if (!dto.getPassword().equals(dto.getConfirmPassword())) {
+                throw new Exception("Passwords do not match!");
             }
 
-            // Check if User already exists in the centralized Users table
-            if(userRepository.findByEmail(register.getEmail()).isPresent()){
-                throw new IllegalArgumentException("Email is already registered!");
-            }
-
-            // 1. Create the Base User (Credentials)
+            // Create User Security record
             User user = new User();
-            user.setFullname(register.getFullname());
-            user.setEmail(register.getEmail());
-            user.setPassword(passwordEncoder.encode(register.getPassword()));
+            user.setEmail(dto.getEmail());
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
             user.setRole("TEACHER");
+            user.setActive(true);
             User savedUser = userRepository.save(user);
 
-            // 2. Create the Teacher Profile linked to that User
+            // Create Teacher Profile record
             Teacher teacher = new Teacher();
-            teacher.setUser(savedUser); // This is the link from your diagram
-            // If you have faculty_number in your DTO, set it here:
-            // teacher.setFacultyNumber(register.getFacultyNumber());
+            teacher.setFullname(dto.getFullname());
+            teacher.setEmail(dto.getEmail());
+            teacher.setDepartment(dto.getDepartment());
+            teacher.setPhone_number(dto.getPhone_number());
+            teacher.setAddress(dto.getAddress());
+            teacher.setRole("TEACHER");
+            teacher.setUser(savedUser);
 
-            Teacher savedTeacher = teacherRepository.save(teacher);
+            teacherRepository.save(teacher);
+
+            result.setSuccess(true);
+            result.setMessage("Teacher account created successfully!");
+            result.setFullname(teacher.getFullname());
             
-            result.setSuccess(true);
-            result.setMessage("Teacher successfully registered!");
-            result.setTeacher(savedTeacher);
-        } catch(Exception e) { 
-            result.setSuccess(false);
-            result.setMessage(e.getMessage());
-        }
-        return result;
-    }
-    
-    @Override
-    public ResultDTO TeacherLogin(TeacherLoginDTO login) {
-        ResultDTO result = new ResultDTO();
-        try {
-            // Find the Teacher by reaching through the User relationship
-            Teacher teacher = teacherRepository.findByUserEmail(login.getEmail())
-                .orElseThrow(() -> new Exception("Invalid email or password"));
-      
-            if(!passwordEncoder.matches(login.getPassword(), teacher.getUser().getPassword())) {
-                throw new Exception("Invalid email or password");
-            }
-
-            result.setSuccess(true);
-            result.setMessage("Login successful!");
-            result.setTeacher(teacher);
-        } catch(Exception e) {
+        } catch (Exception e) {
             result.setSuccess(false);
             result.setMessage(e.getMessage());
         }

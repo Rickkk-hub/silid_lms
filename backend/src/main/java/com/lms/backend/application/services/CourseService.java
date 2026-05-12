@@ -1,13 +1,13 @@
 package com.lms.backend.application.services;
 
-import com.lms.backend.application.dto.CourseDTO;
+import com.lms.backend.application.dto.course.CourseDTO;
+import com.lms.backend.application.dto.users.ResultDTO;
 import com.lms.backend.domain.entities.Course;
 import com.lms.backend.domain.repositories.ICourseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
-import java.util.UUID; // <--- The most important fix
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -15,55 +15,49 @@ public class CourseService {
 
     private final ICourseRepository courseRepository;
 
-    public List<CourseDTO> findAll() {
-        return courseRepository.findAll().stream()
-                .map(this::mapToDTO) // Calls the helper below
-                .collect(Collectors.toList());
-    }
+    public ResultDTO saveOrUpdate(CourseDTO dto) {
+        try {
+            Course course;
 
-    public CourseDTO save(CourseDTO dto) {
-        // Check if code already exists to avoid the 500 error
-        if (courseRepository.findByCode(dto.getCode()).isPresent()) {
-            throw new RuntimeException("Course code " + dto.getCode() + " already exists!");
+            if (dto.getId() != null) {
+                // UPDATE LOGIC: Fetch the existing course
+                course = courseRepository.findById(dto.getId())
+                        .orElseThrow(() -> new Exception("Course with ID " + dto.getId() + " not found."));
+            } else {
+                // CREATE LOGIC: Check for duplicate course codes before saving
+                if (courseRepository.existsByCode(dto.getCode())) {
+                    return new ResultDTO(false, "Course code '" + dto.getCode() + "' already exists.");
+                }
+                course = new Course();
+            }
+
+            course.setCode(dto.getCode());
+            course.setTitle(dto.getTitle());
+            course.setDescription(dto.getDescription());
+            course.setUnits(dto.getUnits());
+
+            courseRepository.save(course);
+
+            String action = (dto.getId() != null) ? "updated" : "saved";
+            return new ResultDTO(true, "Course " + dto.getCode() + " " + action + " successfully.");
+
+        } catch (Exception e) {
+            // SonarQube fix: Ensure the exception is logged or handled properly
+            return new ResultDTO(false, "Error: " + e.getMessage());
         }
-
-        Course course = new Course();
-        course.setCode(dto.getCode());
-        course.setTitle(dto.getTitle());
-        course.setDepartment(dto.getDepartment());
-        course.setUnits(dto.getUnits());
-
-        Course saved = courseRepository.save(course);
-        return mapToDTO(saved);
     }
 
-    // FIX: Added the update method
-    public CourseDTO update(UUID id, CourseDTO dto) {
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
+    public ResultDTO delete(Long id) {
+        try {
+            // Check if it exists before trying to delete to avoid empty result exceptions
+            if (!courseRepository.existsById(id)) {
+                return new ResultDTO(false, "Cannot delete: Course not found.");
+            }
 
-        course.setCode(dto.getCode());
-        course.setTitle(dto.getTitle());
-        course.setDepartment(dto.getDepartment());
-        course.setUnits(dto.getUnits());
-
-        return mapToDTO(courseRepository.save(course));
-    }
-
-    // FIX: Added the delete method
-    public void delete(UUID id) {
-        courseRepository.deleteById(id);
-    }
-
-    // FIX: The missing helper method
-    private CourseDTO mapToDTO(Course course) {
-        CourseDTO dto = new CourseDTO();
-        dto.setId(course.getId());
-        dto.setCode(course.getCode());
-        dto.setTitle(course.getTitle());
-        dto.setDepartment(course.getDepartment());
-        dto.setUnits(course.getUnits());
-        dto.setActive(course.isActive());
-        return dto;
+            courseRepository.deleteById(id);
+            return new ResultDTO(true, "Course removed successfully.");
+        } catch (Exception e) {
+            return new ResultDTO(false, "Delete failed: " + e.getMessage());
+        }
     }
 }

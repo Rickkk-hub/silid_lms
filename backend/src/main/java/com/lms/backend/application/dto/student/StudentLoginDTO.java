@@ -1,4 +1,4 @@
-package com.lms.backend.application.dto;
+package com.lms.backend.application.dto.student;
 import lombok.Data;
 
 @Data

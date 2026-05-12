@@ -1,21 +1,30 @@
 package com.lms.backend.presentation.controllers;
 
-import com.lms.backend.application.dto.AdminStatsDTO;
-import com.lms.backend.application.services.AdminService; // Import the service
-import org.springframework.beans.factory.annotation.Autowired;
+
+import com.lms.backend.application.dto.admin.AdminLoginDTO;
+import com.lms.backend.application.dto.admin.AdminRegisterDTO;
+import com.lms.backend.application.dto.users.ResultDTO;
+import com.lms.backend.application.services.AdminService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:3000")
+@RequiredArgsConstructor
 public class AdminController {
 
-    @Autowired
-    private AdminService adminService; // Inject the service instead of repositories
+    private final AdminService adminService;
 
-    @GetMapping("/stats")
-    public AdminStatsDTO getOverviewStats() {
-        // Just call the service method
-        return adminService.getOverviewStats();
+    @PostMapping("/register")
+    public ResponseEntity<ResultDTO> register(@RequestBody AdminRegisterDTO dto) {
+        ResultDTO result = adminService.registerAdmin(dto);
+        return result.isSuccess() ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ResultDTO> login(@RequestBody AdminLoginDTO dto) {
+        ResultDTO result = adminService.loginAdmin(dto);
+        return result.isSuccess() ? ResponseEntity.ok(result) : ResponseEntity.status(401).body(result);
     }
 }

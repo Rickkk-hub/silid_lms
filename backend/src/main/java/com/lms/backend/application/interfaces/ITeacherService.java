@@ -1,8 +1,8 @@
 package com.lms.backend.application.interfaces;
 
-import com.lms.backend.application.dto.ResultDTO;
-import com.lms.backend.application.dto.TeacherLoginDTO;
-import com.lms.backend.application.dto.TeacherRegisterDTO;
+import com.lms.backend.application.dto.teacher.TeacherLoginDTO;
+import com.lms.backend.application.dto.teacher.TeacherRegisterDTO;
+import com.lms.backend.application.dto.users.ResultDTO;
 
 public interface ITeacherService {
     

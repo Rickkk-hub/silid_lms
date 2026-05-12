@@ -2,27 +2,32 @@ package com.lms.backend.domain.entities;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.util.UUID;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "modules")
 @Data
 public class Module {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "section_id", nullable = false)
-    private Section section;
-
+    @Column(nullable = false)
     private String title;
-    private String description;
-    
-    @Column(name = "is_published")
-    private boolean isPublished = false;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = false, length = 1000)
+    private String fileUrl; // URL for the document or video
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false)
+    private String section; // The bridge to the Enrollment table
+
+    @ManyToOne
+    @JoinColumn(name = "teacher_id", nullable = false)
+    private Teacher teacher; // The instructor who owns the module
+
+    private LocalDateTime uploadedAt = LocalDateTime.now();
 }

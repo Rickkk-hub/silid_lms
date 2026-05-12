@@ -1,14 +1,17 @@
 package com.lms.backend.application.services;
 
-import com.lms.backend.application.dto.StudentLoginDTO;
-import com.lms.backend.application.dto.StudentRegisterDTO;
-import com.lms.backend.application.dto.ResultDTO;
+import com.lms.backend.application.dto.student.StudentLoginDTO;
+import com.lms.backend.application.dto.student.StudentRegisterDTO;
+import com.lms.backend.application.dto.users.ResultDTO;
 import com.lms.backend.application.interfaces.IUserService;
+import com.lms.backend.domain.entities.Student;
 import com.lms.backend.domain.entities.User;
+import com.lms.backend.domain.repositories.IStudentRepository;
 import com.lms.backend.domain.repositories.IUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
@@ -16,12 +19,12 @@ import java.util.List;
 public class UserService implements IUserService {
 
     private final IUserRepository userRepository;
+    private final IStudentRepository studentRepository; // Added this
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public List<User> getUsersByRole(String role) {
-        // Normalizing role to uppercase to match DB storage (e.g., "TEACHER")
-        return userRepository.findByRole(role.toUpperCase());
+    public List<User> findAllByRole(String role) {
+        return userRepository.findAllByRole(role.toUpperCase());
     }
 
     @Override
@@ -30,10 +33,12 @@ public class UserService implements IUserService {
     }
 
     @Override
+    @Transactional // Critical: Ensures both User and Student save or both fail
     public ResultDTO StudentRegister(StudentRegisterDTO register) {
         ResultDTO result = new ResultDTO();
         try {
-            if (!register.getPassword().equals(register.getConfirmpassword())) {
+            // 1. Validations
+            if (!register.getPassword().equals(register.getConfirmPassword())) {
                 throw new Exception("Passwords do not match!");
             }
 
@@ -41,25 +46,34 @@ public class UserService implements IUserService {
                 throw new Exception("A user with this email already exists!");
             }
 
+            // 2. Create and Save User (Login Credentials)
             User user = new User();
-            user.setFullname(register.getFullname());
             user.setEmail(register.getEmail());
             user.setPassword(passwordEncoder.encode(register.getPassword()));
-            
-            // Default to STUDENT if no role provided, otherwise normalize to UPPERCASE
-            String assignedRole = (register.getRole() != null && !register.getRole().isEmpty()) 
-                                  ? register.getRole().toUpperCase() 
-                                  : "STUDENT";
-            user.setRole(assignedRole);
+            user.setRole("STUDENT"); // Hardcoded for security instead of getRole()
             user.setActive(true);
-
             User savedUser = userRepository.save(user);
 
+            // 3. Create and Save Student Profile (Personal Details)
+            Student student = new Student();
+            student.setFullname(register.getFullname());
+            student.setEmail(register.getEmail());
+            student.setCourse(register.getCourse());
+            student.setYear_level(register.getYear_level());
+            student.setGender(register.getGender());
+            student.setBirth_date(register.getBirth_date());
+            student.setAddress(register.getAddress());
+            student.setPhone_number(register.getPhone_number());
+            student.setRole("STUDENT");
+            student.setUser(savedUser); // Link to the user record
+
+            studentRepository.save(student);
+
             result.setSuccess(true);
-            result.setMessage(savedUser.getRole() + " Successfully Registered!");
-            result.setId(savedUser.getId());
+            result.setMessage("Student successfully registered!");
+            result.setUserid(savedUser.getUserid());
             result.setRole(savedUser.getRole());
-            result.setFullname(savedUser.getFullname());
+            result.setFullname(student.getFullname());
 
         } catch (Exception e) {
             result.setSuccess(false);
@@ -72,7 +86,6 @@ public class UserService implements IUserService {
     public ResultDTO StudentLogin(StudentLoginDTO login) {
         ResultDTO result = new ResultDTO();
         try {
-            // This is the CRITICAL part: it only searches the IUserRepository (users table)
             User user = userRepository.findByEmail(login.getEmail())
                     .orElseThrow(() -> new Exception("Invalid email or password!"));
 
@@ -82,12 +95,12 @@ public class UserService implements IUserService {
 
             result.setSuccess(true);
             result.setMessage("Login successful!");
-            
-            // We pass the full User entity. The frontend will grab user.id (the new UUID)
-            result.setUser(user);
-            result.setId(user.getId()); // Explicitly set ID for the ResultDTO
+            result.setUserid(user.getUserid());
             result.setRole(user.getRole());
-            result.setFullname(user.getFullname());
+            
+            // Optionally find the student name to show on dashboard
+            studentRepository.findByUserUserid(user.getUserid())
+                .ifPresent(s -> result.setFullname(s.getFullname()));
 
         } catch (Exception e) {
             result.setSuccess(false);

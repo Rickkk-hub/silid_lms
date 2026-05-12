@@ -1,13 +1,12 @@
 package com.lms.backend.domain.repositories;
 
-import java.util.Optional;
-import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
 import com.lms.backend.domain.entities.Admin;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.Optional;
 
-
-public interface IAdminRepository extends JpaRepository<Admin, UUID >{
-  Optional<Admin>findByEmail(String email);
-    
+@Repository
+public interface IAdminRepository extends JpaRepository<Admin, Long> {
+    // Used to link the Admin profile during login or dashboard load
+    Optional<Admin> findByUserUserid(long userid);
 }
-

@@ -2,27 +2,25 @@ package com.lms.backend.domain.repositories;
 
 import com.lms.backend.domain.entities.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import java.util.UUID;
+import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
-public interface IEnrollmentRepository extends JpaRepository<Enrollment, UUID> {
+@Repository
+public interface IEnrollmentRepository extends JpaRepository<Enrollment, Long> {
     
-    List<Enrollment> findByStudentId(UUID studentId);
+    // For Admin: View everyone in a specific year/term
+    List<Enrollment> findBySchoolYearAndSemester(String schoolYear, String semester);
 
-    @Query("SELECT e FROM Enrollment e " +
-           "JOIN FETCH e.student s " +
-           "JOIN FETCH s.user u " +
-           "WHERE e.section.id = :sectionId")
-    List<Enrollment> findBySection_Id(UUID sectionId);
+    // For Teacher: View their instructional load
+    List<Enrollment> findByTeacherId(Long teacherId);
 
-    // ADD THIS: Finds enrollments by the User ID linked to the Student
-    @Query("SELECT e FROM Enrollment e " +
-           "JOIN FETCH e.section sec " +
-           "JOIN FETCH e.student s " +
-           "WHERE s.user.id = :userId")
-    List<Enrollment> findByStudentUserId(@Param("userId") UUID userId);
+    // For Student: View their enrolled subjects
+    List<Enrollment> findByStudentId(Long studentId);
 
-    boolean existsByStudentIdAndSectionId(UUID studentId, UUID sectionId);
+    // For Class Records: Fetch everyone in a specific section string
+    List<Enrollment> findBySection(String section);
+
+    // FIX: The missing method needed by EnrollmentService.java
+    Optional<Enrollment> findByStudentIdAndCourseIdAndSection(Long studentId, Long courseId, String section);
 }

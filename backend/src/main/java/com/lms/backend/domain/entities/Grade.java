@@ -1,47 +1,66 @@
 package com.lms.backend.domain.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "grades")
-@Getter // <--- Ensure these are here
-@Setter // <--- This provides the 'setCreatedAt' method
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Data
 public class Grade {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "enrollment_id")
-    private Enrollment enrollment;
+    @Column(nullable = false)
+    @JsonProperty("prelims") // Force plural naming in JSON output
+    private Double prelims;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id")
-    private Task task;
+    @Column(nullable = false)
+    @JsonProperty("midterms") // Force plural naming in JSON output
+    private Double midterms;
 
-    private Double score;
+    @Column(nullable = false)
+    @JsonProperty("finals") // Force plural naming in JSON output
+    private Double finals;
 
-    // This is the field the error is complaining about
-    private LocalDateTime createdAt; 
-    
+    @JsonProperty("average")
+    private Double average;
+
+    private String remarks; // e.g., "Passed", "Failed", "Incomplete"
+
+    @ManyToOne
+    @JoinColumn(name = "student_id", nullable = false)
+    private Student student;
+
+    @ManyToOne
+    @JoinColumn(name = "teacher_id", nullable = false)
+    private Teacher teacher;
+
+    @Column(nullable = false)
+    private String section;
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Optional: Auto-fill these when saving
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        calculateAverage();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        calculateAverage();
+    }
+
+    public void calculateAverage() {
+        if (prelims != null && midterms != null && finals != null) {
+            this.average = (prelims + midterms + finals) / 3.0;
+            this.remarks = (this.average >= 75) ? "PASSED" : "FAILED";
+        }
     }
 }
