@@ -16,7 +16,7 @@ export default function SDashboardLayout() {
 
         <StudentHeader setSidebarOpen={setSidebarOpen} />
 
-        <main className="">
+        <main>
           <StudentOverview />
         </main>
 

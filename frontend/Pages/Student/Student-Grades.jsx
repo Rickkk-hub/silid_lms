@@ -1,7 +1,7 @@
 import { useState } from "react";
-import GradesHeader from "../../Components/Dashboard/Student/GradesHeader";
 import StudentSidebar from "../../Components/Dashboard/Student/StudentSidebar";
 import StudentGrades from "../../Components/Dashboard/Student/StudentGrades";
+import StudentHeader from "../../Components/Dashboard/Student/StudentHeader";
 
 
 export default function SGrade(){
@@ -10,7 +10,7 @@ export default function SGrade(){
         <div className="min-h-screen bg-gray-50 flex">
             <StudentSidebar open={sidebarOpen} setOpen={setSidebarOpen}/>
          <div className="flex-1 flex flex-col min-h-screen">
-            <GradesHeader setSidebarOpen={setSidebarOpen}/>
+            <StudentHeader setSidebarOpen={setSidebarOpen}/>
             <main>
             <StudentGrades/>
             </main>

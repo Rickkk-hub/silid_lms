@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import {
@@ -31,21 +32,29 @@ export default function TeacherRecord() {
       
       // 1. Fetch Enrollments to get the full class list
       const enrollRes = await axios.get(`http://localhost:8080/api/enrollments/teacher/${user.id}`);
-      const enrolledInThisSection = enrollRes.data.filter(en => en.section === sectionName);
+      
+      // CRITICAL GUARD: Salain lang ang mga active students na may valid student link sa section na ito
+      const enrolledInThisSection = (enrollRes.data || []).filter(
+        en => en.section === sectionName && en.student && en.student.id
+      );
 
       // 2. Fetch Grades for existing scores
       const gradesRes = await axios.get(`http://localhost:8080/api/grades/teacher/${user.id}/section/${sectionName}`);
 
       // 3. Merge to ensure clean UI records
       const recordData = enrolledInThisSection.map(enrollment => {
-        const grade = gradesRes.data.find(g => g.student.id === enrollment.student.id);
+        // SAFE LOOKUP CHECK: Defensive guard laban sa null reference sa grade records map loop
+        const grade = (gradesRes.data || []).find(
+          g => g.student && g.student.id && String(g.student.id) === String(enrollment.student.id)
+        );
+
         return {
-          studentName: enrollment.student.fullname,
-          prelim: grade ? grade.prelims : 0,
-          midterm: grade ? grade.midterms : 0,
-          finals: grade ? grade.finals : 0,
-          standing: grade ? grade.average : 0,
-          status: grade ? grade.remarks : "Ongoing"
+          studentName: enrollment.student.fullname || "Unknown Student",
+          prelim: grade ? (grade.prelims || 0) : 0,
+          midterm: grade ? (grade.midterms || 0) : 0,
+          finals: grade ? (grade.finals || 0) : 0,
+          standing: grade ? (grade.average || 0) : 0,
+          status: grade ? (grade.remarks || "Ongoing") : "Ongoing"
         };
       });
 
@@ -66,11 +75,14 @@ export default function TeacherRecord() {
         return;
       }
       try {
-        // Fetch enrollments to extract the unique section strings
         const res = await axios.get(`http://localhost:8080/api/enrollments/teacher/${user.id}`);
-        if (isMounted) {
+        if (isMounted && res.data) {
           const enrollments = res.data || [];
-          const uniqueSections = [...new Set(enrollments.map(e => e.section))].map(sec => ({
+          
+          // Saring mabuti: Kunin lang ang sections na may student karga para walang empty artifact selections
+          const activeEnrollments = enrollments.filter(e => e.section && e.student);
+          
+          const uniqueSections = [...new Set(activeEnrollments.map(e => e.section))].map(sec => ({
             id: sec,
             name: sec
           }));
@@ -80,6 +92,9 @@ export default function TeacherRecord() {
             const firstSec = uniqueSections[0].id;
             setSelectedSection(firstSec);
             await fetchClassRecord(firstSec);
+          } else {
+            // Kung malinis at walang record pa, i-turn off ang table loaders
+            setStudents([]);
           }
         }
       } catch (err) {
@@ -191,18 +206,18 @@ export default function TeacherRecord() {
                     </td>
                     
                     <td className="px-4 py-5 text-center text-xs font-bold text-slate-500">
-                      {student.prelim.toFixed(2)}
+                      {Number(student.prelim).toFixed(2)}
                     </td>
                     <td className="px-4 py-5 text-center text-xs font-bold text-slate-500">
-                      {student.midterm.toFixed(2)}
+                      {Number(student.midterm).toFixed(2)}
                     </td>
                     <td className="px-4 py-5 text-center text-xs font-bold text-slate-500">
-                      {student.finals.toFixed(2)}
+                      {Number(student.finals).toFixed(2)}
                     </td>
                     
                     <td className="px-4 py-5 text-center">
                       <span className={`inline-block px-3 py-1 rounded-lg font-black text-[10px] border shadow-sm ${getStandingColor(student.standing)}`}>
-                        {student.standing.toFixed(2)}
+                        {Number(student.standing).toFixed(2)}
                       </span>
                     </td>
                     

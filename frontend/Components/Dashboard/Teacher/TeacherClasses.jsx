@@ -3,28 +3,21 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { 
-  Loader2, Plus, BookOpen, MapPin, 
-  Clock, Book, Users, GraduationCap 
+  Loader2, BookOpen, MapPin, 
+  Clock, Users, GraduationCap, CheckCircle
 } from "lucide-react";
 import DashboardModal from "../../Layout/HomeLayout/DashboardModal";
+
+const api = axios.create({ baseURL: "http://localhost:8080/api", withCredentials: true });
 
 export default function TeacherClasses() {
   const [classesData, setClassesData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [courses, setCourses] = useState([]);
+  const [isReady, setIsReady] = useState(false);
   
-  // Class Record State for "Drill-down"
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedSection, setSelectedSection] = useState(null);
   const [studentList, setStudentList] = useState([]);
-
-  const [formData, setFormData] = useState({
-    courseId: "",
-    sectionName: "",
-    schedule: "",
-    room: "",
-  });
 
   const user = useMemo(() => {
     try {
@@ -35,231 +28,146 @@ export default function TeacherClasses() {
     }
   }, []);
 
-  // 1. DATA LOADING LOGIC
-  const loadData = useCallback(async () => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
+  const loadData = useCallback(async (isMounted) => {
+    if (!user?.id) return;
     try {
-      setLoading(true); 
-      const response = await axios.get(`http://localhost:8080/api/enrollments/teacher/${user.id}`);
+      if (isMounted) setLoading(true);
       
-      const uniqueSections = response.data.reduce((acc, curr) => {
-        if (!acc.find(item => item.section === curr.section)) {
-          acc.push(curr);
+      const response = await api.get(`/enrollments/teacher/${user.id}`);
+      
+      const sections = response.data.reduce((acc, curr) => {
+        const sectionKey = `${curr.course?.code}-${curr.section}`;
+        if (!acc[sectionKey]) {
+          acc[sectionKey] = {
+            ...curr,
+            studentCount: curr.student ? 1 : 0,
+            students: curr.student ? [curr.student] : []
+          };
+        } else if (curr.student) {
+          acc[sectionKey].studentCount += 1;
+          acc[sectionKey].students.push(curr.student);
         }
         return acc;
-      }, []);
+      }, {});
 
-      setClassesData(uniqueSections || []);
+      if (isMounted) {
+        setClassesData(Object.values(sections));
+        setTimeout(() => setIsReady(true), 50);
+      }
     } catch (error) {
-      console.error("Failed to load teacher sections:", error);
-      // Fixed: Proper exception handling for SonarQube
+      console.error(">>> FETCH ERROR:", error.response?.data || error.message);
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
   }, [user.id]);
 
   useEffect(() => {
     let isMounted = true;
-
-    // We define an async wrapper to move the setState out of the sync execution path
-    const syncData = async () => {
+    setTimeout(() => {
       if (isMounted) {
-        await loadData();
+        loadData(isMounted);
       }
-    };
-
-    syncData();
-
-    return () => {
-      isMounted = false;
-    };
+    }, 0);
+    return () => { isMounted = false; };
   }, [loadData]);
 
-  // 2. FETCH STUDENTS FOR A SPECIFIC SECTION (The "Bridge" Logic)
-  const handleViewStudents = async (sectionName) => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`http://localhost:8080/api/enrollments/section/${sectionName}`);
-      // Filter out skeleton rows to show real students
-      const enrolled = res.data.filter(en => en.student !== null);
-      
-      setStudentList(enrolled);
-      setSelectedSection(sectionName);
-      setIsViewModalOpen(true);
-    } catch (error) {
-      console.error("Class Record Error:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Connection Failed",
-        text: "Could not retrieve the student list from the registry.",
-        confirmButtonColor: "#3a947e"
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleViewStudents = (sectionObj) => {
+    setStudentList(sectionObj.students || []);
+    setSelectedSection(sectionObj);
+    setIsViewModalOpen(true);
   };
 
-  // 3. FETCH SUBJECTS FOR DROPDOWN
-  useEffect(() => {
-    if (isModalOpen) {
-      const fetchSubjects = async () => {
-        try {
-          const res = await axios.get("http://localhost:8080/api/courses");
-          setCourses(res.data || []);
-        } catch (error) {
-          console.error("Subject fetch failed:", error);
-        }
-      };
-      fetchSubjects();
-    }
-  }, [isModalOpen]);
-
-  // 4. SUBMIT NEW CLASS
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        teacherId: user.id,
-        section: formData.sectionName,
-        courseId: formData.courseId,
-        schedule: formData.schedule,
-        room: formData.room
-      };
-
-      const res = await axios.post("http://localhost:8080/api/enrollments/create-section", payload);
-
-      if (res.data.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Section Initialized",
-          confirmButtonColor: "#3a947e",
-          background: "#F1F5F0"
-        });
-
-        setIsModalOpen(false);
-        setFormData({ courseId: "", sectionName: "", schedule: "", room: "" });
-        loadData();
-      }
-    } catch (error) {
-      console.error("Submission failed:", error);
-      Swal.fire({ icon: "error", title: "Error", text: "Process incomplete.", confirmButtonColor: "#3a947e" });
-    }
-  };
-
-  if (loading && classesData.length === 0) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F1F5F0]">
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F1F5F0] p-4">
       <Loader2 className="animate-spin mb-4 text-[#3a947e]" size={42} />
-      <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em]">Syncing Records...</p>
+      <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] text-center">Syncing Faculty Load...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F1F5F0] px-4 sm:px-6 py-6 space-y-8 animate-in fade-in duration-700">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 border-b border-emerald-900/5 pb-8">
-        <div className="flex items-center gap-4 text-left">
-          <div className="p-3 rounded-2xl shadow-lg bg-white text-[#3a947e]"><BookOpen size={28} /></div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-serif font-bold text-slate-800 tracking-tight">Classes</h1>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1 italic">Instructional Load Management</p>
+    <>
+      <div className={`w-full space-y-6 md:space-y-8 pt-4 md:pt-6 text-left transition-all duration-500 ease-out ${
+        isReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+      }`}>
+        
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-emerald-900/5 pb-6 sm:pb-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="p-3 rounded-2xl shadow-sm bg-white text-[#3a947e] shrink-0"><BookOpen size={24} className="md:w-7 md:h-7" /></div>
+            <div className="min-w-0">
+              <h1 className="text-2xl md:text-3xl font-serif font-bold text-slate-800 truncate">Teaching Load</h1>
+              <p className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5 italic truncate">Confirmed Instructional Blocks</p>
+            </div>
           </div>
-        </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-[#062D24] text-[#3a947e] px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#0a3d31] transition-all shadow-xl active:scale-95">
-          <Plus size={16} /> Add New Class
-        </button>
-      </header>
+          <div className="w-fit bg-white px-4 py-2 rounded-xl border border-emerald-100 shadow-sm flex items-center gap-2.5 shrink-0">
+            <CheckCircle size={16} className="text-[#3a947e]" />
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight whitespace-nowrap">Semester: 1st 2025-2026</span>
+          </div>
+        </header>
 
-      {/* STATS HERO */}
-      <div className="bg-[#062D24] p-10 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden text-left">
-        <div className="relative z-10">
-          <p className="text-teal-400 text-[10px] font-black uppercase tracking-[0.3em] mb-4">Registry Summary</p>
-          <h2 className="text-6xl font-serif font-bold tracking-tighter italic">
-            {classesData.length} <span className="text-2xl text-slate-400 not-italic ml-2 uppercase tracking-widest">Active Sections</span>
+        <div className="bg-[#062D24] p-6 sm:p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-xl relative overflow-hidden min-w-0">
+          <p className="text-teal-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2 md:mb-4 truncate">Instructor Portfolio</p>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold tracking-tighter italic break-words leading-none">
+            {classesData.length} <span className="text-lg sm:text-xl md:text-2xl text-slate-400 not-italic ml-1 md:ml-2 uppercase tracking-widest">Active Subjects</span>
           </h2>
         </div>
-        <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
-      </div>
 
-      {/* List */}
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden text-left">
-        <div className="divide-y divide-slate-50">
-          {classesData.length === 0 ? (
-            <div className="p-20 text-center text-slate-300 italic text-sm">No teaching load recorded for this term.</div>
-          ) : (
-            classesData.map((section, idx) => (
-              <div key={idx} className="px-8 py-8 flex flex-col sm:flex-row sm:items-center justify-between group hover:bg-slate-50 transition-all">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center justify-center bg-[#F1F7F5] text-[#3a947e] min-w-[120px] py-4 rounded-2xl text-[11px] font-black border border-teal-100 uppercase tracking-widest shadow-sm">
-                    {section.section}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-lg group-hover:text-[#3a947e] transition-colors uppercase font-serif">
-                      {section.course?.title || "General Instruction"}
-                    </h4>
-                    <div className="flex items-center gap-4 mt-1">
-                       <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Clock size={12} className="text-[#3a947e]"/> {section.schedule}</span>
-                       <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><MapPin size={12} className="text-[#3a947e]"/> {section.room}</span>
+        <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden min-w-0">
+          <div className="divide-y divide-slate-50">
+            {classesData.length === 0 ? (
+              <div className="p-16 text-center text-slate-300 italic text-xs md:text-sm">Walang naka-assign na load sa registry.</div>
+            ) : (
+              classesData.map((item, idx) => (
+                <div key={idx} className="p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 hover:bg-slate-50/50 transition-all text-left min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 md:gap-6 min-w-0 flex-1">
+                    <div className="flex sm:flex-col items-center justify-center bg-[#F1F7F5] text-[#3a947e] min-w-0 lg:min-w-[120px] py-2.5 sm:py-4 px-4 sm:px-2 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black border border-teal-100 uppercase tracking-widest w-fit sm:w-auto shrink-0 select-none">
+                      {item.section}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-slate-800 text-base md:text-lg hover:text-[#3a947e] transition-colors uppercase font-serif break-words leading-snug">
+                        {item.course?.title}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 min-w-0">
+                         <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 uppercase shrink-0"><Clock size={12} className="text-[#3a947e] shrink-0"/> {item.schedule}</span>
+                         <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 uppercase shrink-0"><MapPin size={12} className="text-[#3a947e] shrink-0"/> Room {item.room || "TBA"}</span>
+                         <span className="text-[10px] text-teal-600 font-black flex items-center gap-1 uppercase tracking-widest shrink-0 whitespace-nowrap"><Users size={12} className="shrink-0"/> {item.studentCount} Students</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="shrink-0 pt-2 lg:pt-0 border-t lg:border-none border-slate-50 flex sm:justify-end">
+                    <button 
+                      onClick={() => handleViewStudents(item)}
+                      className="w-full sm:w-auto px-6 md:px-8 py-3.5 md:py-4 bg-[#062D24] text-[#3a947e] rounded-xl md:rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-900 transition-all flex items-center justify-center gap-2 shadow-md active:scale-95"
+                    >
+                      <Users size={14} className="shrink-0" /> View Class List
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => handleViewStudents(section.section)}
-                  className="mt-4 sm:mt-0 px-6 py-3 bg-[#F1F7F5] text-[#3a947e] rounded-xl text-[9px] font-black uppercase tracking-widest border border-teal-50 hover:bg-[#3a947e] hover:text-white transition-all flex items-center gap-2"
-                >
-                  <Users size={14} /> Class Record
-                </button>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* CREATE MODAL */}
-      <DashboardModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Instructional Block">
-        <form onSubmit={handleSubmit} className="space-y-5 text-left">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Subject</label>
-            <select required className="w-full p-4 rounded-2xl bg-[#F1F5F0] text-sm font-bold border-none outline-none" value={formData.courseId} onChange={(e) => setFormData({...formData, courseId: e.target.value})}>
-              <option value="">Select Subject...</option>
-              {courses.map(c => <option key={c.id} value={c.id}>{c.code} - {c.title}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Section</label>
-            <input required placeholder="BSIT-2A" className="w-full p-4 rounded-2xl bg-[#F1F5F0] text-sm font-bold border-none outline-none" value={formData.sectionName} onChange={(e) => setFormData({...formData, sectionName: e.target.value})} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <input required placeholder="Schedule" className="p-4 rounded-2xl bg-[#F1F5F0] text-sm font-bold border-none outline-none" value={formData.schedule} onChange={(e) => setFormData({...formData, schedule: e.target.value})} />
-            <input required placeholder="Room" className="p-4 rounded-2xl bg-[#F1F5F0] text-sm font-bold border-none outline-none" value={formData.room} onChange={(e) => setFormData({...formData, room: e.target.value})} />
-          </div>
-          <button type="submit" className="w-full bg-[#062D24] text-[#3a947e] py-5 mt-4 rounded-2xl font-black uppercase text-[10px] tracking-widest">Finalize Block</button>
-        </form>
-      </DashboardModal>
-
-      {/* VIEW STUDENTS MODAL */}
-      <DashboardModal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Student Record: ${selectedSection}`}>
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+      <DashboardModal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Class List: ${selectedSection?.course?.code} - ${selectedSection?.section}`}>
+        <div className="space-y-4 max-h-[50vh] sm:max-h-[60vh] overflow-y-auto pr-1 text-left">
           {studentList.length === 0 ? (
-            <p className="text-center py-10 text-slate-400 italic text-sm font-serif uppercase tracking-widest">No student enrollments for this block.</p>
+            <p className="text-center py-12 text-slate-400 italic text-xs md:text-sm uppercase tracking-widest">Wala pang naka-enroll na estudyante.</p>
           ) : (
-            studentList.map((entry, i) => (
-              <div key={i} className="flex items-center justify-between p-5 bg-[#F1F7F5] rounded-2xl border border-teal-50 group hover:bg-white hover:shadow-md transition-all text-left">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-white rounded-lg text-[#3a947e]"><GraduationCap size={18} /></div>
-                  <div>
-                    <h5 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{entry.student?.fullname}</h5>
-                    <p className="text-[9px] font-black text-[#3a947e] uppercase tracking-widest">{entry.student?.department || "Regular"}</p>
+            studentList.map((student, i) => (
+              <div key={i} className="flex items-center justify-between p-4 md:p-5 bg-[#F1F7F5] rounded-xl md:rounded-2xl border border-teal-50 group hover:bg-white hover:shadow-md transition-all gap-4 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-white rounded-lg text-[#3a947e] shadow-sm shrink-0"><GraduationCap size={18} /></div>
+                  <div className="min-w-0 flex-1">
+                    <h5 className="text-xs md:text-sm font-bold text-slate-800 uppercase break-words leading-tight">{student.fullname}</h5>
+                    <p className="text-[9px] font-black text-[#3a947e] uppercase tracking-[0.2em] mt-0.5 truncate">{student.studentId || "2025-001"}</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter italic">Enrolled</span>
+                <span className="bg-[#062D24] text-[#3a947e] text-[8px] font-black px-2.5 py-1.5 rounded-lg uppercase italic shrink-0 select-none">Official</span>
               </div>
             ))
           )}
         </div>
       </DashboardModal>
-    </div>
+    </>
   );
 }

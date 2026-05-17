@@ -7,6 +7,7 @@ import com.lms.backend.domain.repositories.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,29 +20,48 @@ public class AttendanceService {
     @Transactional
     public ResultDTO markAttendance(AttendanceDTO dto) {
         try {
-            // Upsert Logic: Find existing or create new
-            Attendance attendance = attendanceRepository
-                .findByStudentIdAndCourseIdAndDate(dto.getStudentId(), dto.getCourseId(), dto.getDate())
-                .orElse(new Attendance());
+            Optional<Attendance> existingAttendance = attendanceRepository
+                .findByStudent_IdAndCourse_IdAndDate(dto.getStudentId(), dto.getCourseId(), dto.getDate());
 
-            // Map Foreign Keys
-            attendance.setStudent(studentRepository.findById(dto.getStudentId())
-                .orElseThrow(() -> new RuntimeException("Student not found")));
-            attendance.setTeacher(teacherRepository.findById(dto.getTeacherId())
-                .orElseThrow(() -> new RuntimeException("Teacher not found")));
-            attendance.setCourse(courseRepository.findById(dto.getCourseId())
-                .orElseThrow(() -> new RuntimeException("Course not found")));
+            if (existingAttendance.isPresent()) {
+                System.out.printf("\n[SECURITY BLOCK] Rejected duplicate log attempt for Student ID: %d on Date: %s\n", 
+                    dto.getStudentId(), dto.getDate());
+                return new ResultDTO(false, "Already logged for today. Duplication restricted by server.");
+            }
 
-            // Map Data
-            attendance.setSection(dto.getSection());
+            Student student = studentRepository.findById(dto.getStudentId())
+                .orElseThrow(() -> new RuntimeException("Student profile not found for ID: " + dto.getStudentId()));
+            
+            // DYNAMIC FIX: Gagamit ng primary key (.findById) para sa teachers table
+            Teacher teacher = teacherRepository.findById(dto.getTeacherId())
+                .orElseThrow(() -> new RuntimeException("Teacher profile configuration not found for Teacher ID: " + dto.getTeacherId()));
+            
+            Course course = courseRepository.findById(dto.getCourseId())
+                .orElseThrow(() -> new RuntimeException("Course entity record not found for ID: " + dto.getCourseId()));
+
+            Attendance attendance = new Attendance();
+            attendance.setStudent(student);
+            attendance.setTeacher(teacher);
+            attendance.setCourse(course);
+            attendance.setSection(dto.getSection()); 
             attendance.setDate(dto.getDate());
             attendance.setStatus(dto.getStatus());
             attendance.setRemarks(dto.getRemarks());
 
             attendanceRepository.save(attendance);
-            return new ResultDTO(true, "Attendance logged for student: " + dto.getStudentId());
+
+            System.out.println("\n>>> [ATTENDANCE LOG SAVED]");
+            System.out.printf("    DATE    : %s\n", attendance.getDate());
+            System.out.printf("    STUDENT : ID %-2d | %s\n", student.getId(), student.getUser() != null ? student.getUser().getFullname() : "N/A");
+            System.out.printf("    TEACHER : ID %-2d | %s\n", teacher.getId(), teacher.getFullname());
+            System.out.printf("    SUBJECT : ID %-2d | %s (%s)\n", course.getId(), course.getCode(), course.getTitle());
+            System.out.printf("    STATUS  : %s\n", attendance.getStatus());
+            System.out.println("-----------------------------------");
+            
+            return new ResultDTO(true, "Attendance logged successfully");
         } catch (Exception e) {
-            return new ResultDTO(false, "System Failure: " + e.getMessage());
+            System.err.printf("\n[ERROR] Attendance insertion failed: %s\n", e.getMessage());
+            return new ResultDTO(false, "Error context failure: " + e.getMessage());
         }
     }
 }

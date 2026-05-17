@@ -25,16 +25,22 @@ public class AttendanceController {
         return ResponseEntity.ok(attendanceService.markAttendance(dto));
     }
 
-    // FIX: Provides data for the "Live Logs" card (Resolves 404)
-    @GetMapping("/teacher/{teacherId}/recent")
-    public ResponseEntity<List<Attendance>> getRecentLogs(@PathVariable Long teacherId) {
-        return ResponseEntity.ok(attendanceRepository.findTop5ByTeacherIdOrderByDateDesc(teacherId));
+    // UPDATED: Now uses the UserID bridge
+    @GetMapping("/teacher/{userId}/recent")
+    public ResponseEntity<List<Attendance>> getRecentLogs(@PathVariable Long userId) {
+        return ResponseEntity.ok(attendanceRepository.findTop5ByTeacher_User_UserIdOrderByDateDesc(userId));
     }
 
-    // FIX: Provides data for the "Audit Logs" table (Resolves 404)
-    @GetMapping("/teacher/{teacherId}/history")
-    public ResponseEntity<List<Attendance>> getFullHistory(@PathVariable Long teacherId) {
-        return ResponseEntity.ok(attendanceRepository.findByTeacherIdOrderByDateDesc(teacherId));
+    // UPDATED: Now uses the UserID bridge
+    @GetMapping("/teacher/{userId}/history")
+    public ResponseEntity<List<Attendance>> getFullHistory(@PathVariable Long userId) {
+        return ResponseEntity.ok(attendanceRepository.findByTeacher_User_UserIdOrderByDateDesc(userId));
+    }
+
+    // UPDATED: Student Portal View
+    @GetMapping("/student/{userId}")
+    public ResponseEntity<List<Attendance>> getStudentHistory(@PathVariable Long userId) {
+        return ResponseEntity.ok(attendanceRepository.findByStudent_User_UserId(userId));
     }
 
     @GetMapping("/section/{section}/date/{date}")
@@ -43,9 +49,4 @@ public class AttendanceController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(attendanceRepository.findBySectionAndDate(section, date));
     }
-
-    @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<Attendance>> getStudentHistory(@PathVariable Long studentId) {
-    return ResponseEntity.ok(attendanceRepository.findByStudentId(studentId));
- }
 }

@@ -19,7 +19,7 @@ import java.util.List;
 public class UserService implements IUserService {
 
     private final IUserRepository userRepository;
-    private final IStudentRepository studentRepository; // Added this
+    private final IStudentRepository studentRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -33,7 +33,7 @@ public class UserService implements IUserService {
     }
 
     @Override
-    @Transactional // Critical: Ensures both User and Student save or both fail
+    @Transactional
     public ResultDTO StudentRegister(StudentRegisterDTO register) {
         ResultDTO result = new ResultDTO();
         try {
@@ -50,8 +50,12 @@ public class UserService implements IUserService {
             User user = new User();
             user.setEmail(register.getEmail());
             user.setPassword(passwordEncoder.encode(register.getPassword()));
-            user.setRole("STUDENT"); // Hardcoded for security instead of getRole()
+            user.setRole("STUDENT");
             user.setActive(true);
+            
+            // REAL-TIME SYNC: I-save ang fullname sa master users table
+            user.setFullname(register.getFullname());
+            
             User savedUser = userRepository.save(user);
 
             // 3. Create and Save Student Profile (Personal Details)
@@ -65,13 +69,13 @@ public class UserService implements IUserService {
             student.setAddress(register.getAddress());
             student.setPhone_number(register.getPhone_number());
             student.setRole("STUDENT");
-            student.setUser(savedUser); // Link to the user record
+            student.setUser(savedUser); 
 
             studentRepository.save(student);
 
             result.setSuccess(true);
             result.setMessage("Student successfully registered!");
-            result.setUserid(savedUser.getUserid());
+            result.setUserid(savedUser.getUserId());
             result.setRole(savedUser.getRole());
             result.setFullname(student.getFullname());
 
@@ -95,12 +99,13 @@ public class UserService implements IUserService {
 
             result.setSuccess(true);
             result.setMessage("Login successful!");
-            result.setUserid(user.getUserid());
+            result.setUserid(user.getUserId());
             result.setRole(user.getRole());
             
-            // Optionally find the student name to show on dashboard
-            studentRepository.findByUserUserid(user.getUserid())
-                .ifPresent(s -> result.setFullname(s.getFullname()));
+            // --- THE REAL-TIME UNIFIED FIX ---
+            // Dahil may fullname field na ang User entity mo, dirediretso na nating
+            // makukuha ang pangalan (Noel Cerbito man o pangalan ng Student) mula sa master table!
+            result.setFullname(user.getFullname());
 
         } catch (Exception e) {
             result.setSuccess(false);

@@ -5,6 +5,8 @@ import com.lms.backend.application.dto.users.ResultDTO;
 import com.lms.backend.application.services.GradeService;
 import com.lms.backend.domain.entities.Grade;
 import com.lms.backend.domain.repositories.IGradeRepository;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +23,7 @@ public class GradeController {
     private final IGradeRepository gradeRepository;
 
     @PostMapping("/submit")
-    public ResponseEntity<ResultDTO> submitGrade(@RequestBody GradeDTO dto) {
+    public ResponseEntity<ResultDTO> submitGrade(@Valid @RequestBody GradeDTO dto) {
         try {
             ResultDTO result = gradeService.saveOrUpdateGrade(dto);
             return ResponseEntity.ok(result);
@@ -31,28 +33,22 @@ public class GradeController {
         }
     }
 
-    // Aligned for Teacher Dashboard: Fetches all grades for a specific section
-    @GetMapping("/teacher/{teacherId}/section/{section}")
+    @GetMapping("/teacher/{userId}/section/{section}")
     public ResponseEntity<List<Grade>> getSectionGrades(
-            @PathVariable Long teacherId, 
+            @PathVariable Long userId, 
             @PathVariable String section) {
-        
-        // This ensures the teacher only sees grades they personally gave to that section
-        List<Grade> grades = gradeRepository.findByTeacherIdAndSection(teacherId, section);
-        
-        // LOGGING (Visible in your Spring Console) to verify data is reaching the controller
-        System.out.println(">>> Fetching grades for Section: " + section + " | Count: " + grades.size());
-        
+        List<Grade> grades = gradeRepository.findByTeacher_User_UserIdAndSection(userId, section);
+        System.out.println(">>> Fetching grades for Teacher User ID: " + userId + " | Section: " + section + " | Found: " + grades.size());
         return ResponseEntity.ok(grades);
     }
 
-    // Aligned for Student Portal
-    @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<Grade>> getStudentGrades(@PathVariable Long studentId) {
-        return ResponseEntity.ok(gradeRepository.findByStudentId(studentId));
+    // --- THE FIX: REAL-TIME STUDENT PORTAL TRACKER ---
+    @GetMapping("/student/{userId}")
+    public ResponseEntity<List<Grade>> getStudentGrades(@PathVariable Long userId) {
+        System.out.println(">>> Fetching grades for Student User ID: " + userId);
+        return ResponseEntity.ok(gradeRepository.findByStudent_User_UserId(userId));
     }
 
-    // Delete Grade (Useful for the Admin or Teacher cleanup)
     @DeleteMapping("/{id}")
     public ResponseEntity<ResultDTO> deleteGrade(@PathVariable Long id) {
         try {

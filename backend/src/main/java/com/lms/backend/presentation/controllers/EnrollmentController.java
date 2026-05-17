@@ -15,35 +15,62 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/enrollments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
     private final IEnrollmentRepository enrollmentRepository;
 
+    @PostMapping("/create-section")
+    public ResponseEntity<ResultDTO> createSection(@RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(enrollmentService.initializeSection(payload));
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ResultDTO> update(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(enrollmentService.updateSection(id, payload));
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ResultDTO> delete(@PathVariable Long id) {
+        return ResponseEntity.ok(enrollmentService.deleteSection(id));
+    }
+
+    @PutMapping("/approve/{id}")
+    public ResponseEntity<ResultDTO> approve(@PathVariable Long id) {
+        return ResponseEntity.ok(enrollmentService.approveEnrollment(id));
+    }
+
+    @PutMapping("/decline/{id}")
+    public ResponseEntity<ResultDTO> decline(@PathVariable Long id) {
+        return ResponseEntity.ok(enrollmentService.declineEnrollment(id));
+    }
+
+    // --- NEW API ENDPOINT FOR STUDENT RESCUE OPERATIONS ---
+    @DeleteMapping("/purge-student/{studentId}")
+    public ResponseEntity<Void> purgeStudentRecords(@PathVariable Long studentId) {
+        enrollmentService.purgeStudentEnrollments(studentId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/open")
+    public ResponseEntity<List<Enrollment>> getOpenEnrollments() {
+        return ResponseEntity.ok(enrollmentRepository.findByStatusAndStudentIsNull("OPEN"));
+    }
+
     @PostMapping("/enroll")
     public ResponseEntity<ResultDTO> enroll(@RequestBody EnrollmentDTO dto) {
-        ResultDTO result = enrollmentService.processEnrollment(dto);
+        ResultDTO result = enrollmentService.requestEnrollment(dto);
         return result.isSuccess() ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
     }
 
-    @PostMapping("/create-section")
-    public ResponseEntity<ResultDTO> createSection(@RequestBody Map<String, Object> payload) {
-        ResultDTO result = enrollmentService.initializeSection(payload);
-        return ResponseEntity.ok(result);
+    @GetMapping("/student/{userId}")
+    public ResponseEntity<List<Enrollment>> getStudentEnrollments(@PathVariable Long userId) {
+        return ResponseEntity.ok(enrollmentRepository.findByStudent_User_UserId(userId));
     }
 
-    @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<Enrollment>> getStudentEnrollments(@PathVariable Long studentId) {
-        List<Enrollment> list = enrollmentRepository.findByStudentId(studentId);
-        // This log will confirm if Student 4 has data in the DB
-        System.out.println(">>> Request for Student " + studentId + " | Records found: " + list.size());
-        return ResponseEntity.ok(list);
-    }
-
-    @GetMapping("/teacher/{teacherId}")
-    public ResponseEntity<List<Enrollment>> listByTeacher(@PathVariable Long teacherId) {
-        return ResponseEntity.ok(enrollmentRepository.findByTeacherId(teacherId));
+    @GetMapping("/teacher/{userId}")
+    public ResponseEntity<List<Enrollment>> getTeacherEnrollments(@PathVariable Long userId) {
+        return ResponseEntity.ok(enrollmentRepository.findByTeacher_User_UserId(userId));
     }
 
     @GetMapping

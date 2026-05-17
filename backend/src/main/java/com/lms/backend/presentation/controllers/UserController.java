@@ -20,8 +20,6 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<ResultDTO> login(@RequestBody StudentLoginDTO loginDTO) {
-        // This is the core logic: validate password in 'users' table, 
-        // then fetch 'fullname' using the @JoinColumn link.
         ResultDTO result = authService.login(loginDTO.getEmail(), loginDTO.getPassword());
         
         if (result.isSuccess()) {

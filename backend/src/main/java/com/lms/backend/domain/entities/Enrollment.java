@@ -16,11 +16,11 @@ public class Enrollment {
     
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "course_id")
-    @JsonIgnoreProperties({"enrollments", "grades"}) // Prevent recursion
+    @JsonIgnoreProperties({"enrollments", "grades"})
     private Course course;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "student_id") // Removed nullable=false for "skeleton" sections
+    @JoinColumn(name = "student_id")
     @JsonIgnoreProperties({"enrollments", "grades", "attendance"}) 
     private Student student;
 
@@ -30,7 +30,7 @@ public class Enrollment {
     private Teacher teacher;
 
     @Column(nullable = false)
-    private String status; // "Enrolled", "Active", "Dropped"
+    private String status; // "OPEN", "PENDING", "ACTIVE", "DROPPED"
 
     private String room;
     private String schedule;
@@ -42,7 +42,6 @@ public class Enrollment {
     private String schoolYear; 
 
     private String section; 
-
     private String department; 
 
     @Column(name = "enrollment_date")
@@ -53,8 +52,9 @@ public class Enrollment {
         if (this.enrollmentDate == null) {
             this.enrollmentDate = LocalDate.now();
         }
+        // Mahalaga ito para sa "Offers" system mo
         if (this.status == null) {
-            this.status = "Active";
+            this.status = "OPEN"; 
         }
     }
 }

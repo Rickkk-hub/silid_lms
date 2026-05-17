@@ -22,20 +22,19 @@ public class TeacherService {
     public ResultDTO registerTeacher(TeacherRegisterDTO dto) {
         ResultDTO result = new ResultDTO();
         try {
-            // Validation
             if (!dto.getPassword().equals(dto.getConfirmPassword())) {
                 throw new Exception("Passwords do not match!");
             }
 
-            // Create User Security record
             User user = new User();
             user.setEmail(dto.getEmail());
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
             user.setRole("TEACHER");
             user.setActive(true);
+            user.setFullname(dto.getFullname());
+
             User savedUser = userRepository.save(user);
 
-            // Create Teacher Profile record
             Teacher teacher = new Teacher();
             teacher.setFullname(dto.getFullname());
             teacher.setEmail(dto.getEmail());
@@ -51,6 +50,68 @@ public class TeacherService {
             result.setMessage("Teacher account created successfully!");
             result.setFullname(teacher.getFullname());
             
+        } catch (Exception e) {
+            result.setSuccess(false);
+            result.setMessage(e.getMessage());
+        }
+        return result;
+    }
+
+    // --- NEW: UPDATE TEACHER PROFILE AND MASTER ACCOUNT ---
+    @Transactional
+    public ResultDTO updateTeacher(Long id, TeacherRegisterDTO dto) {
+        ResultDTO result = new ResultDTO();
+        try {
+            Teacher teacher = teacherRepository.findById(id)
+                    .orElseThrow(() -> new Exception("Teacher record not found!"));
+
+            teacher.setFullname(dto.getFullname());
+            teacher.setEmail(dto.getEmail());
+            teacher.setDepartment(dto.getDepartment());
+            teacher.setPhone_number(dto.getPhone_number());
+            teacher.setAddress(dto.getAddress());
+            teacherRepository.save(teacher);
+
+            User user = teacher.getUser();
+            if (user != null) {
+                user.setFullname(dto.getFullname());
+                user.setEmail(dto.getEmail());
+                if (dto.getPassword() != null && !dto.getPassword().trim().isEmpty()) {
+                    if (!dto.getPassword().equals(dto.getConfirmPassword())) {
+                        throw new Exception("Passwords do not match!");
+                    }
+                    user.setPassword(passwordEncoder.encode(dto.getPassword()));
+                }
+                userRepository.save(user);
+            }
+
+            result.setSuccess(true);
+            result.setMessage("Teacher account updated successfully!");
+        } catch (Exception e) {
+            result.setSuccess(false);
+            result.setMessage(e.getMessage());
+        }
+        return result;
+    }
+
+    // --- NEW: PURGE TEACHER PROFILE AND SECURITY CREDENTIALS ---
+    @Transactional
+    public ResultDTO deleteTeacher(Long id) {
+        ResultDTO result = new ResultDTO();
+        try {
+            Teacher teacher = teacherRepository.findById(id)
+                    .orElseThrow(() -> new Exception("Teacher record not found!"));
+
+            User user = teacher.getUser();
+
+            teacherRepository.delete(teacher);
+
+            if (user != null) {
+                userRepository.delete(user);
+            }
+
+            result.setSuccess(true);
+            result.setMessage("Teacher account successfully purged from registry.");
         } catch (Exception e) {
             result.setSuccess(false);
             result.setMessage(e.getMessage());

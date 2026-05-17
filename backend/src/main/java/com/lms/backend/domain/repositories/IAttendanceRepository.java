@@ -7,15 +7,18 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IAttendanceRepository extends JpaRepository<Attendance, Long> {
-    // Basic filters
     List<Attendance> findBySectionAndDate(String section, LocalDate date);
-    List<Attendance> findByStudentId(Long studentId);
     
-    // Aligns with the "Recent Logs" card (Top 5)
-    List<Attendance> findTop5ByTeacherIdOrderByDateDesc(Long teacherId);
+    // Bridge lookup matching student by User ID
+    List<Attendance> findByStudent_User_UserId(Long userId);
     
-    // Aligns with the "Audit Logs" table (History)
-    List<Attendance> findByTeacherIdOrderByDateDesc(Long teacherId);
+    // Top records limit lookup for logs dashboard
+    List<Attendance> findTop5ByTeacher_User_UserIdOrderByDateDesc(Long userId);
+    
+    // Audit log dataset query ordered by timeline tracking
+    List<Attendance> findByTeacher_User_UserIdOrderByDateDesc(Long userId);
 
-    Optional<Attendance> findByStudentIdAndCourseIdAndDate(Long studentId, Long courseId, LocalDate date);
+    // --- FIXED PROPERTY REFERENCE BRIDGE ---
+    // Gagamit ng Student_Id at Course_Id para saktong tumama sa core entity mapping configuration ng domain tables mo
+    Optional<Attendance> findByStudent_IdAndCourse_IdAndDate(Long studentId, Long courseId, LocalDate date);
 }

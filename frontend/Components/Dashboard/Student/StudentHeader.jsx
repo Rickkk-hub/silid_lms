@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { Menu, Search, Bell, LogOut, User, Settings, ChevronDown, X } from "lucide-react";
 import Swal from "sweetalert2";
@@ -8,6 +9,22 @@ export default function StudentHeader({ setSidebarOpen }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   const navigate = useNavigate(); 
+
+  const user = useMemo(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  const avatarInitial = useMemo(() => {
+    if (user?.fullname) {
+      return user.fullname.trim().charAt(0).toUpperCase();
+    }
+    return "S";
+  }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -38,7 +55,6 @@ export default function StudentHeader({ setSidebarOpen }) {
         <div className="fixed inset-0 z-10" onClick={() => setIsProfileOpen(false)} />
       )}
 
-      {/* LEFT SECTION */}
       <div className="flex items-center gap-4 flex-1">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -52,7 +68,6 @@ export default function StudentHeader({ setSidebarOpen }) {
         </div>
       </div>
 
-      {/* RIGHT SECTION */}
       <div className="flex items-center gap-2 md:gap-5 relative z-20">
         
         <button 
@@ -67,24 +82,22 @@ export default function StudentHeader({ setSidebarOpen }) {
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-orange-500 rounded-full border-2 border-[#F1F5F0]"></span>
         </button>
 
-        {/* PROFILE TRIGGER */}
         <button 
           onClick={() => setIsProfileOpen(!isProfileOpen)}
           className="flex items-center gap-2 p-1 pr-1 md:pr-3 rounded-full hover:bg-white hover:shadow-sm transition-all border border-transparent"
         >
-          <div className="w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
-            R
+          <div className="w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm select-none capitalize">
+            {avatarInitial}
           </div>
           <ChevronDown size={14} className={`hidden md:block text-gray-500 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        {/* PROFILE MODAL / DROPDOWN */}
         {isProfileOpen && (
           <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="p-5 border-b border-gray-50 bg-gray-50/50">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Student Account</p>
-              <h4 className="text-sm font-bold text-[#2D362F]">Ronald Picardal</h4>
-              <p className="text-[10px] text-gray-500 truncate">ronald@university.edu</p>
+              <h4 className="text-sm font-bold text-[#2D362F] capitalize">{user?.fullname || "Active Student"}</h4>
+              <p className="text-[10px] text-gray-500 truncate">{user?.email || "student@silidlms.portal"}</p>
             </div>
 
             <div className="p-2">
@@ -111,7 +124,6 @@ export default function StudentHeader({ setSidebarOpen }) {
         )}
       </div>
 
-      {/* MOBILE SEARCH OVERLAY */}
       {isSearchOpen && (
         <div className="absolute inset-x-0 top-0 h-16 bg-[#F1F5F0] z-40 flex items-center px-4 animate-in slide-in-from-top duration-200 md:hidden">
           <div className="relative w-full">

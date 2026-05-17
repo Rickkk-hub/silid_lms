@@ -7,8 +7,6 @@ export default function AdminHeader({ setSidebarOpen }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const navigate = useNavigate(); 
 
-  // --- REAL-TIME USER DATA FETCH ---
-  // This memo ensures that whenever the header re-renders, it pulls the latest email/name
   const user = useMemo(() => {
     try {
       const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -65,7 +63,7 @@ export default function AdminHeader({ setSidebarOpen }) {
           {/* THE ICON BOX: Same shadow and rounding as your Dashboard Cards */}
           <div className="flex flex-col">
             <h1 className="text-2xl sm:text-xl font-serif font-bold text-slate-800 tracking-tight leading-none">
-              Admin Module Dashboard
+             Module Dashboard
             </h1>
           
           </div>

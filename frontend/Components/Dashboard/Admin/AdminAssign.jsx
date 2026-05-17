@@ -1,205 +1,188 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { 
-  Search, UserPlus, BookOpen, Clock, 
-  MapPin, Loader2, GraduationCap 
-} from 'lucide-react';
+import { Search, UserPlus, BookOpen, Clock, MapPin, Loader2, GraduationCap } from 'lucide-react';
 import Swal from 'sweetalert2';
+
+const API_BASE = "http://localhost:8080/api";
 
 export default function AdminAssign() {
   const [teachers, setTeachers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isReady, setIsReady] = useState(false);
 
-  const API_BASE = "http://localhost:8080/api";
-
-  // 1. Fetching Faculty and Course Registry
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (isMounted = true) => {
     try {
       const [tRes, cRes] = await Promise.all([
-        axios.get(`${API_BASE}/users/role/TEACHER`), 
+        axios.get(`${API_BASE}/teachers`), 
         axios.get(`${API_BASE}/courses`)
       ]);
-      setTeachers(tRes.data || []);
-      setCourses(cRes.data || []);
+      
+      if (isMounted) {
+        setTeachers(tRes.data || []);
+        setCourses(cRes.data || []);
+        setTimeout(() => setIsReady(true), 50);
+      }
     } catch (err) {
       console.error("Assignment Load Error:", err);
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
-  };
+  }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    let isMounted = true;
+    
+    setTimeout(() => {
+      if (isMounted) {
+        loadData(isMounted);
+      }
+    }, 0);
 
-  // 2. Search filtering logic
+    return () => { isMounted = false; };
+  }, [loadData]);
+
   const filteredTeachers = teachers.filter(t => 
-    (t.fullname || t.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+    (t.fullname || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // 3. The Assignment Modal (Aligned with your Section table)
   const handleAssignSubject = async (teacher) => {
+    const teacherId = teacher.teacher_id || teacher.id;
+
     const { value: formValues } = await Swal.fire({
       title: '<span class="text-2xl font-serif font-bold text-[#2D362F]">Assign Subject Load</span>',
       background: "#FFFFFF",
-      padding: '2rem',
       showCancelButton: true,
       confirmButtonColor: '#062D24',
       confirmButtonText: 'Confirm Assignment',
       customClass: {
-        popup: 'rounded-[2.5rem] shadow-2xl',
-        confirmButton: 'rounded-xl px-8 py-3 text-[10px] font-black uppercase tracking-widest text-[#3a947e]'
+        popup: 'rounded-[2.5rem] shadow-2xl p-4 sm:p-6 w-[92vw] max-w-md',
+        confirmButton: 'rounded-xl px-6 py-3 text-[10px] font-black uppercase tracking-widest text-[#3D967C] bg-[#062D24]'
       },
       html: `
-        <div class="flex flex-col gap-5 mt-6 text-left">
-          <p class="text-[11px] text-gray-400 bg-gray-50 p-4 rounded-2xl border border-gray-100 font-bold uppercase tracking-wider">
-            Instructor: <span class="text-[#3a947e]">${teacher.fullname || teacher.name}</span>
+        <div class="flex flex-col gap-4 mt-4 text-left">
+          <p class="text-[10px] text-gray-400 bg-gray-50 p-3 rounded-xl border border-gray-100 font-black uppercase tracking-wider mb-1">
+            Instructor: <span class="text-[#3a947e]">${teacher.fullname}</span>
           </p>
           
-          <div class="space-y-1.5">
-            <label class="text-[10px] font-black uppercase text-[#3a947e] ml-1 tracking-[0.2em]">Select Course</label>
-            <select id="swal-course" class="w-full p-4 rounded-2xl bg-[#F1F5F0] border-none text-sm font-bold text-gray-700 outline-none">
+          <div class="space-y-1">
+            <label class="text-[9px] font-black uppercase text-[#3a947e] ml-0.5 tracking-widest">Select Course</label>
+            <select id="swal-course" class="w-full p-3.5 rounded-xl bg-[#F1F5F0] border-none text-xs font-bold text-gray-700 outline-none cursor-pointer">
               <option value="" disabled selected>Choose Registry Subject...</option>
               ${courses.map(c => `<option value="${c.id}">${c.code} — ${c.title}</option>`).join('')}
             </select>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="text-[10px] font-black uppercase text-[#3a947e] ml-1 tracking-[0.2em]">Section Name</label>
-            <input id="swal-section-name" class="w-full p-4 rounded-2xl bg-[#F1F5F0] border-none text-sm font-bold text-gray-700 outline-none" placeholder="e.g. Section A">
+          <div class="space-y-1">
+            <label class="text-[9px] font-black uppercase text-[#3a947e] ml-0.5 tracking-widest">Section Name</label>
+            <input id="swal-section-name" class="w-full p-3.5 rounded-xl bg-[#F1F5F0] border-none text-xs font-bold text-gray-700 outline-none uppercase" placeholder="e.g. BSIS-2A">
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-[10px] font-black uppercase text-[#3a947e] ml-1 tracking-[0.2em]">Schedule</label>
-              <input id="swal-sched" class="w-full p-4 rounded-2xl bg-[#F1F5F0] border-none text-sm font-bold text-gray-700 outline-none" placeholder="TTH 1:00-3:00">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[9px] font-black uppercase text-[#3a947e] ml-0.5 tracking-widest">Schedule</label>
+              <input id="swal-sched" class="w-full p-3.5 rounded-xl bg-[#F1F5F0] border-none text-xs font-bold text-gray-700 outline-none" placeholder="TTH 1:00-3:00">
             </div>
-            <div class="space-y-1.5">
-              <label class="text-[10px] font-black uppercase text-[#3a947e] ml-1 tracking-[0.2em]">Room</label>
-              <input id="swal-room" class="w-full p-4 rounded-2xl bg-[#F1F5F0] border-none text-sm font-bold text-gray-700 outline-none" placeholder="IL605">
+            <div class="space-y-1">
+              <label class="text-[9px] font-black uppercase text-[#3a947e] ml-0.5 tracking-widest">Room</label>
+              <input id="swal-room" class="w-full p-3.5 rounded-xl bg-[#F1F5F0] border-none text-xs font-bold text-gray-700 outline-none uppercase" placeholder="IL605">
             </div>
           </div>
         </div>
       `,
       preConfirm: () => {
         const courseId = document.getElementById('swal-course').value;
-        const name = document.getElementById('swal-section-name').value;
+        const section = document.getElementById('swal-section-name').value;
         const schedule = document.getElementById('swal-sched').value;
         const room = document.getElementById('swal-room').value;
 
-        if (!courseId || !name) return Swal.showValidationMessage('Course and Section Name are required');
+        if (!courseId || !section) return Swal.showValidationMessage('Course and Section are required');
 
-        // RETURN FORMAT: Matches SectionDTO exactly
         return { 
-          teacherId: teacher.id, 
-          courseId: courseId,
-          academicYearId: "1a0471ab-11d0-4f5f-bc50-460d6312ca10", // Verified ID from your terminal
-          name: name, 
-          schedule: schedule,
-          room: room,
-          maxSlots: 40
+          teacherId: Number(teacherId), 
+          courseId: Number(courseId),
+          section: section.trim(), 
+          schedule: schedule.trim(),
+          room: room.trim().toUpperCase(),
+          semester: "1st Semester",
+          schoolYear: "2025-2026"
         };
       }
     });
 
     if (formValues) {
       try {
-        await axios.post(`${API_BASE}/sections`, formValues);
-        Swal.fire({ 
-          icon: 'success', 
-          title: 'Load Assigned', 
-          text: 'Faculty assignment saved successfully.',
-          background: '#F1F5F0', 
-          timer: 1500, 
-          showConfirmButton: false 
-        });
-        loadData(); 
+        const res = await axios.post(`${API_BASE}/enrollments/create-section`, formValues);
+        if (res.data.success) {
+          Swal.fire({ icon: 'success', title: 'Assigned', text: res.data.message, timer: 1500, showConfirmButton: false });
+          setIsReady(false);
+          loadData(true); 
+        }
       } catch (err) {
-        console.error("Post Error Details:", err.response?.data);
-        Swal.fire({
-          icon: 'error',
-          title: 'Assignment Failed',
-          text: err.response?.data?.message || "Check server logs for database constraints.",
-          background: '#F1F5F0',
-          confirmButtonColor: '#062D24'
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || "Failed to assign." });
       }
     }
   };
 
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F1F5F0] p-4">
+      <Loader2 className="animate-spin text-[#3a947e]" size={42} />
+    </div>
+  );
+
   return (
-    <div className="w-full min-h-screen bg-[#F1F5F0] px-4 md:px-10 py-8 animate-in fade-in duration-700">
-      <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 text-[#3a947e]">
-            <UserPlus size={28} />
+    <div className={`w-full space-y-6 md:space-y-8 pt-4 md:pt-6 text-left transition-all duration-500 ease-out ${
+      isReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+    }`}>
+      <header className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center border-b border-emerald-900/5 pb-6 sm:pb-4 min-w-0 w-full">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <div className="p-3 bg-white rounded-2xl shadow-sm text-[#3a947e] shrink-0">
+            <UserPlus size={24} className="md:w-7 md:h-7" />
           </div>
-          <div>
-            <h1 className="text-2xl md:text-4xl font-serif font-bold text-[#2D362F]">Faculty Load</h1>
-            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">Assignment Dashboard</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl md:text-3xl font-serif font-bold text-[#2D362F] truncate">Faculty Load</h1>
+            <p className="text-gray-400 text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-0.5 truncate">Assignment Dashboard</p>
           </div>
-        </div>
-        <div className="bg-white px-5 py-3 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3">
-          <GraduationCap size={20} className="text-[#3a947e]"/>
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Active Teachers: {teachers.length}</span>
         </div>
       </header>
 
-      <div className="relative max-w-md mb-10 group">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+      <div className="relative w-full max-w-md bg-white rounded-xl md:rounded-2xl shadow-sm border border-transparent focus-within:border-slate-200/60 transition-all min-w-0">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 shrink-0" />
         <input 
           type="text" 
-          placeholder="Search by instructor name..."
-          className="w-full bg-white border-none shadow-sm rounded-2xl py-4 pl-12 text-sm font-bold text-gray-700 outline-none transition-all focus:ring-2 focus:ring-teal-500/20"
+          placeholder="Search instructor name..."
+          className="w-full bg-transparent py-3 md:py-3.5 pl-11 pr-4 text-xs md:text-sm font-bold outline-none text-slate-700 placeholder-slate-400"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
-        {loading ? (
-          <div className="col-span-full py-32 text-center flex flex-col items-center gap-4">
-            <Loader2 className="animate-spin text-[#3a947e]" size={48} />
-            <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em]">Gathering Faculty Data...</p>
-          </div>
-        ) : filteredTeachers.length > 0 ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 min-w-0 w-full">
+        {filteredTeachers.length === 0 ? (
+          <div className="py-12 text-center opacity-30 italic text-xs uppercase font-black tracking-widest col-span-full">No instructors found.</div>
+        ) : (
           filteredTeachers.map((teacher) => (
-            <div key={teacher.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
-              <div>
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-14 h-14 bg-[#062D24] text-[#3a947e] rounded-2xl flex items-center justify-center text-xl font-black italic shadow-inner">
-                    {(teacher.fullname || teacher.name || "U")?.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-[#2D362F] leading-tight group-hover:text-[#3a947e] transition-colors">
-                      {teacher.fullname || teacher.name}
-                    </h4>
-                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-[0.2em]">Faculty Instructor</p>
-                  </div>
+            <div key={teacher.teacher_id || teacher.id} className="bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-gray-100 group flex flex-col justify-between gap-6 min-w-0 w-full text-left">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 md:w-14 md:h-14 bg-[#062D24] text-[#3D967C] rounded-xl md:rounded-2xl flex items-center justify-center text-lg font-black italic shrink-0 select-none">
+                  {(teacher.fullname || "U").charAt(0)}
                 </div>
-
-                <div className="bg-gray-50 rounded-2xl p-4 mb-8 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                     <BookOpen size={14} className="text-gray-400"/>
-                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Sections</span>
-                  </div>
-                  <span className="text-sm font-black text-[#3a947e]">{teacher.activeSections || 0}</span>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-base md:text-lg font-bold text-[#2D362F] group-hover:text-[#3a947e] transition-colors uppercase font-serif truncate leading-tight">{teacher.fullname}</h4>
+                  <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mt-1 truncate">Dept: {teacher.department || "General"}</p>
                 </div>
               </div>
-
               <button 
+                type="button"
                 onClick={() => handleAssignSubject(teacher)}
-                className="w-full bg-[#062D24] text-[#3a947e] py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#0a3d31] transition-all shadow-lg active:scale-95"
+                className="w-full bg-[#062D24] text-[#3D967C] py-3.5 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#0a3d31] transition-all shadow-md active:scale-[0.98] shrink-0"
               >
-                <UserPlus size={16} /> Assign Load
+                Assign Load
               </button>
             </div>
           ))
-        ) : (
-          <div className="col-span-full py-20 text-center text-gray-400 italic">No instructor matches found.</div>
         )}
       </div>
     </div>

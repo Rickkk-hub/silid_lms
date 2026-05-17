@@ -20,17 +20,30 @@ public class CourseController {
     private final ICourseRepository courseRepository;
 
     @GetMapping
-    public List<Course> getAll() {
-        return courseRepository.findAll();
+    public ResponseEntity<List<Course>> getAll() {
+        List<Course> list = courseRepository.findAllWithTeacher();
+        return ResponseEntity.ok(list);
     }
 
     @PostMapping("/upsert")
     public ResponseEntity<ResultDTO> upsert(@RequestBody CourseDTO dto) {
-        return ResponseEntity.ok(courseService.saveOrUpdate(dto));
+        ResultDTO result = courseService.saveOrUpdate(dto);
+
+        if (!result.isSuccess()) {
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ResultDTO> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(courseService.delete(id));
+        ResultDTO result = courseService.delete(id);
+
+        if (!result.isSuccess()) {
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        return ResponseEntity.ok(result);
     }
 }

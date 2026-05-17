@@ -29,4 +29,18 @@ public class TeacherController {
     public ResponseEntity<List<Teacher>> getAllTeachers() {
         return ResponseEntity.ok(teacherRepository.findAll());
     }
+
+    // --- NEW: PUT MAPPING FOR UPDATE ---
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ResultDTO> update(@PathVariable Long id, @RequestBody TeacherRegisterDTO dto) {
+        ResultDTO result = teacherService.updateTeacher(id, dto);
+        return result.isSuccess() ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
+    }
+
+    // --- NEW: DELETE MAPPING FOR PURGE ---
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ResultDTO> delete(@PathVariable Long id) {
+        ResultDTO result = teacherService.deleteTeacher(id);
+        return result.isSuccess() ? ResponseEntity.ok(result) : ResponseEntity.badRequest().body(result);
+    }
 }

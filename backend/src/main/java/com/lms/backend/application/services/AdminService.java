@@ -1,18 +1,17 @@
 package com.lms.backend.application.services;
 
-import com.lms.backend.application.dto.admin.AdminDTO;
-import com.lms.backend.application.dto.admin.AdminLoginDTO;
-import com.lms.backend.application.dto.admin.AdminRegisterDTO;
+import com.lms.backend.application.dto.admin.*;
 import com.lms.backend.application.dto.users.ResultDTO;
 import com.lms.backend.domain.entities.Admin;
 import com.lms.backend.domain.entities.User;
-import com.lms.backend.domain.repositories.IAdminRepository;
-import com.lms.backend.domain.repositories.IUserRepository;
+import com.lms.backend.domain.repositories.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j; // Added for logging
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j // Added to handle exceptions properly
 @Service
 @RequiredArgsConstructor
 public class AdminService {
@@ -20,8 +19,7 @@ public class AdminService {
     private final IAdminRepository adminRepository;
     private final IUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-
-
+    private final ICourseRepository courseRepository;
 
     @Transactional
     public ResultDTO registerAdmin(AdminRegisterDTO dto) {
@@ -55,6 +53,7 @@ public class AdminService {
             result.populateFromUser(savedUser);
 
         } catch (Exception e) {
+            log.error("Registration failed: ", e); // Handle exception or log it
             result.setSuccess(false);
             result.setMessage(e.getMessage());
         }
@@ -78,28 +77,32 @@ public class AdminService {
             result.setSuccess(true);
             result.setMessage("Administrator Access Granted");
             result.populateFromUser(user);
-            
-            // Fetch the name from the admin table to send back to frontend
-            adminRepository.findByUserUserid(user.getUserid())
-                .ifPresent(admin -> result.setFullname(admin.getFullname()));
+
+            // Link the fullname from Admin table
+            adminRepository.findByUserUserId(user.getUserId())
+                    .ifPresent(admin -> result.setFullname(admin.getFullname()));
 
         } catch (Exception e) {
+            log.error("Login attempt failed for email {}: ", dto.getEmail(), e); // Log handled exception
             result.setSuccess(false);
             result.setMessage(e.getMessage());
         }
         return result;
     }
 
-    public AdminDTO getAdminByUserId(long userId) {
-        Admin admin = adminRepository.findByUserUserid(userId)
-                .orElseThrow(() -> new RuntimeException("Admin profile not found"));
-
-        AdminDTO dto = new AdminDTO();
-        dto.setId(admin.getId());
-        dto.setUserId(admin.getUser().getUserid());
-        dto.setFullname(admin.getFullname());
-        dto.setEmail(admin.getEmail());
-        dto.setRole(admin.getRole());
-        return dto;
+    public AdminStatsDTO getDashboardStats() {
+        AdminStatsDTO stats = new AdminStatsDTO();
+        try {
+            stats.setTotalCourses(courseRepository.count());
+            stats.setActiveFaculty(userRepository.countByRole("TEACHER"));
+            stats.setTotalStudents(userRepository.countByRole("STUDENT"));
+            stats.setUnassignedCount(courseRepository.countByTeacherIsNull());
+            stats.setActiveRoles(3);
+            stats.setDepartmentCount(4);
+        } catch (Exception e) {
+            // "Handle this exception" fix: Log the error properly
+            log.error("Failed to fetch dashboard stats from the database", e);
+        }
+        return stats;
     }
 }

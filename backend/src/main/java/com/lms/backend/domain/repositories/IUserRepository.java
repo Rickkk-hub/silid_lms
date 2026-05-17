@@ -14,5 +14,5 @@ public interface IUserRepository extends JpaRepository<User, Long> {
     long countByRole(String role);
 
     // FIX: Changed 'Id' to 'Userid' and 'UUID' to 'long'
-    Optional<User> findByUseridAndRole(long userid, String role);
+    Optional<User> findByUserIdAndRole(long userid, String role);
 }

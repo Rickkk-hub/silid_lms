@@ -30,7 +30,7 @@ public class ResultDTO {
     public void populateFromUser(User userEntity) {
         this.user = userEntity;
         if (userEntity != null) {
-            this.userid = userEntity.getUserid();
+            this.userid = userEntity.getUserId();
             this.role = userEntity.getRole();
             this.email = userEntity.getEmail();
         }

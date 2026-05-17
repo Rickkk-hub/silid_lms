@@ -8,5 +8,5 @@ import java.util.Optional;
 @Repository
 public interface IAdminRepository extends JpaRepository<Admin, Long> {
     // Used to link the Admin profile during login or dashboard load
-    Optional<Admin> findByUserUserid(long userid);
+    Optional<Admin> findByUserUserId(long userid);
 }
