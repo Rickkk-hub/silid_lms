@@ -43,21 +43,28 @@ public class EnrollmentService {
         }
     }
 
-    @Transactional
+   @Transactional
     public ResultDTO deleteSection(Long id) {
         try {
             Enrollment enrollment = enrollmentRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Section not found."));
+                    .orElseThrow(() -> new RuntimeException("Enrollment or Section record not found."));
 
-            if (enrollment.getStudent() != null) {
-                return new ResultDTO(false, "Cannot delete a record that is already Enrolled this student.");
+            // KUNG MASTER OFFERING SLOT (Ito yung nasa Course Catalog na walang student)
+            if (enrollment.getStudent() == null) {
+                // Safe burahin kasi walang maaapektuhang active student grade registry nodes
+                enrollmentRepository.delete(enrollment);
+                return new ResultDTO(true, "Master section offering successfully removed from catalog.");
             }
 
+            String studentName = enrollment.getStudent().getFullname();
+            String courseCode = enrollment.getCourse().getCode();
+            
             enrollmentRepository.delete(enrollment);
-            return new ResultDTO(true, "Section removed from registry.");
+            
+            return new ResultDTO(true, "Successfully dropped " + studentName + " from course " + courseCode + ".");
         } catch (Exception e) {
             log.error("Delete failed: ", e);
-            return new ResultDTO(false, "Delete failed: " + e.getMessage());
+            return new ResultDTO(false, "Delete operation failed: " + e.getMessage());
         }
     }
 

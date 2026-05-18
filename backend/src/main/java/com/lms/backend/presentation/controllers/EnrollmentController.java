@@ -30,9 +30,13 @@ public class EnrollmentController {
         return ResponseEntity.ok(enrollmentService.updateSection(id, payload));
     }
 
-    @DeleteMapping("/delete/{id}")
+@DeleteMapping("/delete/{id}")
     public ResponseEntity<ResultDTO> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(enrollmentService.deleteSection(id));
+        ResultDTO result = enrollmentService.deleteSection(id);
+        if (!result.isSuccess()) {
+            return ResponseEntity.badRequest().body(result);
+        }
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/approve/{id}")
